@@ -40,7 +40,7 @@ app.use('/uploads', express.static('uploads'));
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-
+const reviewRoutes = require('./routes/reviewRoutes');
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
