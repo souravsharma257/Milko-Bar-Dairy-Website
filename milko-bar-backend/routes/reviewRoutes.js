@@ -4,18 +4,22 @@ const { protect } = require('../middleware/auth');
 const {
   createReview,
   getProductReviews,
-  getUserReviews,
+  getMyReviews,      // ← getUserReviews se change kiya
   updateReview,
-  deleteReview
+  deleteReview,
+  voteReview,        // ← Add kiya
+  canReviewProduct   // ← Add kiya
 } = require('../controllers/reviewController');
 
 // Public routes
 router.get('/product/:productId', getProductReviews);
 
 // Protected routes
-router.post('/:productId', protect, createReview);
-router.get('/my-reviews', protect, getUserReviews);
-router.put('/:reviewId', protect, updateReview);
-router.delete('/:reviewId', protect, deleteReview);
+router.post('/', protect, createReview);
+router.get('/myreviews', protect, getMyReviews);        // ← Fix kiya
+router.get('/can-review/:productId', protect, canReviewProduct); // ← Add kiya
+router.put('/:id', protect, updateReview);
+router.put('/:id/vote', protect, voteReview);           // ← Add kiya
+router.delete('/:id', protect, deleteReview);
 
 module.exports = router;
