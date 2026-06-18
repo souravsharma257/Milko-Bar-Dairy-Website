@@ -21,4 +21,20 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+// Admin middleware - Sirf admin access kar sakta hai
+const admin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as admin' });
+  }
+};
+
+// Generate JWT Token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '30d'
+  });
+};
+
+module.exports = { protect, admin, generateToken };
