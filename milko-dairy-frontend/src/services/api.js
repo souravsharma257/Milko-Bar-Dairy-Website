@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://milko-bar-dairy-website.onrender.com/api';
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
