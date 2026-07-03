@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import axios from 'axios';
-import toast from 'react-hot-toast';
+import { authAPI } from './services/api';
 
 const AuthModal = ({ showAuth, authMode, onClose }) => {
   const [formData, setFormData] = useState({
@@ -33,10 +32,7 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -44,15 +40,15 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
     setLoading(true);
   
     try {
-      let response;
+      let userData;
   
       if (mode === 'login') {
-        response = await axios.post('http://localhost:5000/api/auth/login', {
+        userData = await authAPI.login({
           email: formData.email,
           password: formData.password
         });
       } else {
-        response = await axios.post('http://localhost:5000/api/auth/register', {
+        userData = await authAPI.register({
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
@@ -61,28 +57,36 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
           password: formData.password
         });
       }
-  
-      console.log('Response:', response.data); // ⬅️ DEBUG
-  
-      if (response.data && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data));
-  
-        console.log('Stored user:', response.data); // ⬅️ DEBUG
-        console.log('LocalStorage user:', localStorage.getItem('user')); // ⬅️ DEBUG
-  
-        toast.success(mode === 'login' ? 'Login successful!' : 'Registration successful!');
-        handleClose();
-        setTimeout(() => window.location.reload(), 500);
-      }
+
+      // fullName properly set karo
+      const fullName = userData.fullName || 
+                       `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 
+                       'User';
+
+      const userToStore = {
+        ...userData,
+        fullName
+      };
+
+      // Save to localStorage
+      localStorage.setItem('token', userData.token);
+      localStorage.setItem('user', JSON.stringify(userToStore));
+
+      alert(mode === 'login' ? 'Login successful! ✅' : 'Registration successful! ✅');
+      handleClose();
+      
+      // Page reload karo to refresh user state
+      setTimeout(() => window.location.reload(), 500);
+
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Something went wrong';
-      toast.error(errorMsg);
-      console.error('Auth error:', error.response?.data);
+      alert('❌ ' + errorMsg);
+      console.error('Auth error:', error);
     } finally {
       setLoading(false);
     }
   };
+
   const toggleMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
     setFormData({
@@ -135,7 +139,7 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
                 placeholder="First Name" 
                 value={formData.firstName}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required 
                 autoComplete="given-name"
               />
@@ -145,7 +149,7 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
                 placeholder="Last Name" 
                 value={formData.lastName}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required 
                 autoComplete="family-name"
               />
@@ -155,7 +159,7 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
                 placeholder="Phone Number" 
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required 
                 autoComplete="tel"
               />
@@ -165,7 +169,7 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
                 placeholder="Address" 
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required 
                 autoComplete="street-address"
               />
@@ -179,7 +183,7 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
             placeholder="Email Address" 
             value={formData.email}
             onChange={handleChange}
-            className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required 
             autoComplete="email"
           />
@@ -192,14 +196,14 @@ const AuthModal = ({ showAuth, authMode, onClose }) => {
               placeholder="Password" 
               value={formData.password}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-3 border border-gray-300 rounded-lg pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required 
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
             <button 
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
