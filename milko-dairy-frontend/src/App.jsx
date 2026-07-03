@@ -281,51 +281,69 @@ const fetchAllOrders = async () => {
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Place Order
-  const placeOrder = async (paymentMethod) => {
-    if (!currentUser) {
-      alert('Please login first!');
-      return;
-    }
+  // Place Order - FIXED
+const placeOrder = async (paymentMethod) => {
+  if (!currentUser) {
+    alert('Please login first!');
+    return;
+  }
+  
+  if (cart.length === 0) {
+    alert('Your cart is empty!');
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // User name safely get karo
+    const userName = currentUser.fullName || 
+                     `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 
+                     currentUser.name || 
+                     'Customer';
+
+    // User phone safely get karo
+    const userPhone = currentUser.phone || 
+                      currentUser.userPhone || 
+                      '';
+
+    // User address safely get karo
+    const userAddress = currentUser.address || 
+                        currentUser.userAddress || 
+                        '';
     
-    if (cart.length === 0) {
-      alert('Your cart is empty!');
-      return;
-    }
+    const orderData = {
+      userName,
+      userPhone,
+      userAddress,
+      items: cart.map(item => ({
+        product: item._id,
+        name: item.name,
+        price: item.price,
+        unit: item.unit,
+        quantity: item.quantity,
+        image: item.image
+      })),
+      total: cartTotal,
+      paymentMethod
+    };
 
-    try {
-      setLoading(true);
-      
-      const orderData = {
-        userName: currentUser.fullName,
-        userPhone: currentUser.phone,
-        userAddress: currentUser.address,
-        items: cart.map(item => ({
-          product: item._id,
-          name: item.name,
-          price: item.price,
-          unit: item.unit,
-          quantity: item.quantity,
-          image: item.image
-        })),
-        total: cartTotal,
-        paymentMethod
-      };
+    console.log('Order Data:', orderData); // Debug ke liye
 
-     const response = await ordersAPI.create(orderData);
-      
-      setCart([]);
-      await fetchMyOrders();
-      await fetchProducts(); // Refresh products to update stock
-      setView('orders');
-      alert('Order placed successfully!');
-    } catch (error) {
-      alert(error.response?.data?.message || 'Failed to place order');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    const response = await ordersAPI.create(orderData);
+    
+    setCart([]);
+    await fetchMyOrders();
+    await fetchProducts();
+    setView('orders');
+    alert('Order placed successfully! ✅');
+  } catch (error) {
+    console.error('Order error:', error);
+    alert(error.response?.data?.message || 'Failed to place order');
+  } finally {
+    setLoading(false);
+  }
+};
   // Update Product Price (Admin)
   const updateProductPrice = async (productId, newPrice) => {
     try {
