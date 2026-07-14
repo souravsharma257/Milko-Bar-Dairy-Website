@@ -6,6 +6,19 @@ const orderSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  vendor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor',
+    required: false
+  },
+  vendorCommission: {
+    type: Number,
+    default: 0
+  },
+  vendorEarning: {
+    type: Number,
+    default: 0
+  },
   userName: {
     type: String,
     required: true

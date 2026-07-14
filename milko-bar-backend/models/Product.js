@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
+  vendor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vendor',
+    required: false
+    // Optional for backward compatibility with old products
+  },
   name: {
     type: String,
     required: [true, 'Product name is required'],
