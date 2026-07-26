@@ -13,9 +13,17 @@ const api = axios.create({
 // Add token to requests automatically
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Check if this is a vendor route
+    if (config.url && config.url.startsWith('/vendors')) {
+      const vendorToken = localStorage.getItem('vendorToken');
+      if (vendorToken) {
+        config.headers.Authorization = `Bearer ${vendorToken}`;
+      }
+    } else {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -175,97 +183,6 @@ export const ordersAPI = {
   // Delete order (Admin)
   delete: async (id) => {
     const response = await api.delete(`/orders/${id}`);
-    return response.data;
-  },
-};
-// ========== VENDOR APIs ==========
-
-export const vendorAPI = {
-  // Register Vendor
-  register: async (vendorData) => {
-    const response = await api.post('/vendors/register', vendorData);
-    if (response.data.token) {
-      localStorage.setItem('vendorToken', response.data.token);
-      localStorage.setItem('vendor', JSON.stringify(response.data));
-    }
-    return response.data;
-  },
-
-  // Login Vendor
-  login: async (credentials) => {
-    const response = await api.post('/vendors/login', credentials);
-    if (response.data.token) {
-      localStorage.setItem('vendorToken', response.data.token);
-      localStorage.setItem('vendor', JSON.stringify(response.data));
-    }
-    return response.data;
-  },
-
-  // Logout Vendor
-  logout: () => {
-    localStorage.removeItem('vendorToken');
-    localStorage.removeItem('vendor');
-  },
-
-  // Stored Vendor
-  getStoredVendor: () => {
-    const vendor = localStorage.getItem('vendor');
-    return vendor ? JSON.parse(vendor) : null;
-  },
-
-  // Get All Vendors
-  getAllVendors: async () => {
-    const response = await api.get('/vendors');
-    return response.data;
-  },
-
-  // Get Vendor Profile
-  getProfile: async () => {
-    const response = await api.get('/vendors/profile');
-    return response.data;
-  },
-
-  // Update Vendor Status
-  updateVendorStatus: async (id, status) => {
-    const response = await api.put(`/vendors/${id}/status`, { status });  // PUT hona chahiye
-    return response.data;
-  },
-
-  // Vendor's own products
-  getProducts: async () => {
-    const response = await api.get('/vendors/products');
-    return response.data;
-  },
-
-  createProduct: async (productData) => {
-    const response = await api.post('/vendors/products', productData);
-    return response.data;
-  },
-
-  updateProduct: async (id, productData) => {
-    const response = await api.put(`/vendors/products/${id}`, productData);
-    return response.data;
-  },
-
-  deleteProduct: async (id) => {
-    const response = await api.delete(`/vendors/products/${id}`);
-    return response.data;
-  },
-
-  // Vendor's own orders
-  getOrders: async () => {
-    const response = await api.get('/vendors/orders');
-    return response.data;
-  },
-
-  updateOrderStatus: async (id, status) => {
-    const response = await api.put(`/vendors/orders/${id}/status`, { status });
-    return response.data;
-  },
-
-  // Vendor earnings
-  getEarnings: async () => {
-    const response = await api.get('/vendors/earnings');
     return response.data;
   },
 };
