@@ -47,6 +47,22 @@ export const authAPI = {
     return response.data;
   },
 
+  // Get current user
+  getMe: async () => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
+
+  // Update profile
+  updateProfile: async (userData) => {
+    const response = await api.put('/auth/profile', userData);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
   // Logout
   logout: () => {
     localStorage.removeItem('token');
@@ -83,6 +99,38 @@ export const productsAPI = {
     const response = await api.get(`/products/${id}`);
     return response.data;
   },
+
+  // Create product with image (Admin)
+  create: async (formData) => {
+    const response = await api.post('/products', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Update product with image (Admin)
+  update: async (id, formData) => {
+    const response = await api.put(`/products/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Delete product (Admin)
+  delete: async (id) => {
+    const response = await api.delete(`/products/${id}`);
+    return response.data;
+  },
+
+  // Update price (Admin)
+  updatePrice: async (id, price) => {
+    const response = await api.patch(`/products/${id}/price`, { price });
+    return response.data;
+  },
 };
 
 // ========== ORDERS APIs ==========
@@ -106,55 +154,118 @@ export const ordersAPI = {
     return response.data;
   },
 
+  // Get order by ID
+  getById: async (id) => {
+    const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+
   // Update order status (Admin)
-  updateStatus: async (orderId, status) => {
-    const response = await api.put(`/orders/${orderId}/status`, { status });
+  updateStatus: async (id, status) => {
+    const response = await api.put(`/orders/${id}/status`, { status });
+    return response.data;
+  },
+
+  // Update payment status (Admin)
+  updatePayment: async (id, paymentStatus) => {
+    const response = await api.put(`/orders/${id}/payment`, { paymentStatus });
+    return response.data;
+  },
+
+  // Delete order (Admin)
+  delete: async (id) => {
+    const response = await api.delete(`/orders/${id}`);
     return response.data;
   },
 };
+// ========== VENDOR APIs ==========
 
-// ========== REVIEWS APIs ==========
-
-export const reviewsAPI = {
-  // Create review
-  create: async (reviewData) => {
-    const response = await api.post('/reviews', reviewData);
+export const vendorAPI = {
+  // Register Vendor
+  register: async (vendorData) => {
+    const response = await api.post('/vendors/register', vendorData);
+    if (response.data.token) {
+      localStorage.setItem('vendorToken', response.data.token);
+      localStorage.setItem('vendor', JSON.stringify(response.data));
+    }
     return response.data;
   },
 
-  // Get product reviews
-  getProductReviews: async (productId) => {
-    const response = await api.get(`/reviews/product/${productId}`);
+  // Login Vendor
+  login: async (credentials) => {
+    const response = await api.post('/vendors/login', credentials);
+    if (response.data.token) {
+      localStorage.setItem('vendorToken', response.data.token);
+      localStorage.setItem('vendor', JSON.stringify(response.data));
+    }
     return response.data;
   },
 
-  // Get my reviews
-  getMyReviews: async () => {
-    const response = await api.get('/reviews/myreviews');
+  // Logout Vendor
+  logout: () => {
+    localStorage.removeItem('vendorToken');
+    localStorage.removeItem('vendor');
+  },
+
+  // Stored Vendor
+  getStoredVendor: () => {
+    const vendor = localStorage.getItem('vendor');
+    return vendor ? JSON.parse(vendor) : null;
+  },
+
+  // Get All Vendors
+  getAllVendors: async () => {
+    const response = await api.get('/vendors');
     return response.data;
   },
 
-  // Check if can review
-  canReview: async (productId) => {
-    const response = await api.get(`/reviews/can-review/${productId}`);
+  // Get Vendor Profile
+  getProfile: async () => {
+    const response = await api.get('/vendors/profile');
     return response.data;
   },
 
-  // Update review
-  update: async (reviewId, reviewData) => {
-    const response = await api.put(`/reviews/${reviewId}`, reviewData);
+  // Update Vendor Status
+  updateVendorStatus: async (id, status) => {
+    const response = await api.patch(`/vendors/${id}/status`, { status });
     return response.data;
   },
 
-  // Delete review
-  delete: async (reviewId) => {
-    const response = await api.delete(`/reviews/${reviewId}`);
+  // Vendor's own products
+  getProducts: async () => {
+    const response = await api.get('/vendors/products');
     return response.data;
   },
 
-  // Vote review
-  vote: async (reviewId, voteType) => {
-    const response = await api.put(`/reviews/${reviewId}/vote`, { voteType });
+  createProduct: async (productData) => {
+    const response = await api.post('/vendors/products', productData);
+    return response.data;
+  },
+
+  updateProduct: async (id, productData) => {
+    const response = await api.put(`/vendors/products/${id}`, productData);
+    return response.data;
+  },
+
+  deleteProduct: async (id) => {
+    const response = await api.delete(`/vendors/products/${id}`);
+    return response.data;
+  },
+
+  // Vendor's own orders
+  getOrders: async () => {
+    const response = await api.get('/vendors/orders');
+    return response.data;
+  },
+
+  updateOrderStatus: async (id, status) => {
+    const response = await api.put(`/vendors/orders/${id}/status`, { status });
+    return response.data;
+  },
+
+  // Vendor earnings
+  getEarnings: async () => {
+    const response = await api.get('/vendors/earnings');
     return response.data;
   },
 };

@@ -1,8 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff } from 'lucide-react';
-import { authAPI, productsAPI, ordersAPI } from './services/api';
+import { authAPI, productsAPI, ordersAPI, vendorAPI } from './services/api';
 import AuthModal from './AuthModal';
+import VendorLogin from './VendorLogin';
+import VendorRegister from './VendorRegister';
+import VendorDashboard from './VendorDashboard';
 // import ProductReviews from './components/ProductReviews';
 // import UserProfileMenu from './components/UserProfileMenu';
 
@@ -26,13 +29,10 @@ const AdminDashboard = ({ currentUser }) => {
   // Function define karo (yeh missing tha)
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
-      // API call (apne ordersAPI ke hisab se adjust karo)
-      await ordersAPI.updateOrderStatus(orderId, { status: newStatus });
-      // Local state update
+      await ordersAPI.updateStatus(orderId, newStatus);  // ✅ CORRECT
       setAllOrders(prev => prev.map(order => 
         order._id === orderId ? { ...order, status: newStatus } : order
       ));
-      console.log('Status updated!');  // Or alert/toast
     } catch (error) {
       console.error('Update failed:', error);
     }
@@ -131,6 +131,7 @@ const AdminDashboard = ({ currentUser }) => {
 // Main App Component
 const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentVendor, setCurrentVendor] = useState(null);
   const [view, setView] = useState('home');
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
@@ -252,6 +253,16 @@ const fetchAllOrders = async () => {
     setCart([]);
     setOrders([]);
     setAllOrders([]);
+    setView('home');
+  };
+
+  const handleVendorLoginSuccess=(vendorData)=>{
+    setCurrentVendor(vendorData);
+    setView('vendor-dashboard');
+  };
+  const handleVendorLogout=()=>{
+    vendorAPI.logout();
+    setCurrentVendor(null);
     setView('home');
   };
 
@@ -406,6 +417,8 @@ const placeOrder = async (paymentMethod) => {
                 <Settings size={18} /> Dashboard
               </button>
             )}
+            {!currentUser && !currentVendor && (<button onClick={() => setView('vendor-login')} className="text-white hover:text-blue-200 font-medium">Vendor Login</button>)}
+            {!currentUser && !currentVendor && (<button onClick={() => { setView('vendor-login'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">Vendor Login</button>)}
             {currentUser ? (
               <div className="flex items-center gap-3">
                 <span className="text-sm">Hi, {currentUser.fullName || currentUser.firstName}</span>
@@ -1149,6 +1162,17 @@ const placeOrder = async (paymentMethod) => {
           refreshOrders={fetchAllOrders}
         />
       )}
+
+      {view === 'vendor-login' && (
+        <VendorLogin onLoginSuccess={handleVendorLoginSuccess} onBackToHome={() => setView('home')} onSwitchToRegister={() => setView('vendor-register')} />
+      )}
+      {view === 'vendor-register' && (
+        <VendorRegister onBackToHome={() => setView('home')} onSwitchToLogin={() => setView('vendor-login')} />
+      )}
+      {view === 'vendor-dashboard' && currentVendor && (
+        <VendorDashboard vendor={currentVendor} onLogout={handleVendorLogout} />
+      )}
+
     </div>
   );
 };
