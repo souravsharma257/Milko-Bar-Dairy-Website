@@ -227,7 +227,7 @@ export const vendorAPI = {
 
   // Update Vendor Status
   updateVendorStatus: async (id, status) => {
-    const response = await api.patch(`/vendors/${id}/status`, { status });
+    const response = await api.put(`/vendors/${id}/status`, { status });  // PUT hona chahiye
     return response.data;
   },
 
