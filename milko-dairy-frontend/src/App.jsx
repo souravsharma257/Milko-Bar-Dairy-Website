@@ -1,23 +1,22 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff } from 'lucide-react';
 import { authAPI, productsAPI, ordersAPI, vendorAPI } from './services/api';
 import AuthModal from './AuthModal';
-import VendorLogin from './VendorLogin';
 import VendorRegister from './VendorRegister';
+import VendorLogin from './VendorLogin';
 import VendorDashboard from './VendorDashboard';
-// import ProductReviews from './components/ProductReviews';
-// import UserProfileMenu from './components/UserProfileMenu';
+
 
 const AdminDashboard = ({ currentUser }) => { 
   const [adminView, setAdminView] = useState('orders');  
-  const [allOrders, setAllOrders] = useState([]);  
+  const [allOrders, setAllOrders] = useState([]);
+  const [allVendors, setAllVendors] = useState([]);
 
   // Fetch orders on mount
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-      const response = await ordersAPI.getAll();  // Assuming API method
+      const response = await ordersAPI.getAll();
         setAllOrders(response.data || []);
       } catch (error) {
         console.error('Error fetching orders:', error);
@@ -26,10 +25,34 @@ const AdminDashboard = ({ currentUser }) => {
   fetchOrders();
   }, []);
 
-  // Function define karo (yeh missing tha)
+  useEffect(() => {
+    if (adminView === 'vendors') {
+      fetchVendors();
+    }
+  }, [adminView]);
+
+  const fetchVendors = async () => {
+    try {
+      const response = await vendorAPI.getAllVendors();
+      setAllVendors(response.data || []);
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+    }
+  };
+
+  const handleVendorStatusUpdate = async (vendorId, status) => {
+    try {
+      await vendorAPI.updateVendorStatus(vendorId, status);
+      fetchVendors();
+      alert(`Vendor ${status} successfully!`);
+    } catch (error) {
+      alert('Failed to update vendor status');
+    }
+  };
+
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
-      await ordersAPI.updateStatus(orderId, newStatus);  // ✅ CORRECT
+      await ordersAPI.updateStatus(orderId, newStatus);
       setAllOrders(prev => prev.map(order => 
         order._id === orderId ? { ...order, status: newStatus } : order
       ));
@@ -37,22 +60,33 @@ const AdminDashboard = ({ currentUser }) => {
       console.error('Update failed:', error);
     }
   };
-  // View switcher (if needed, e.g., buttons to change adminView)
+
   const switchView = (view) => {
     setAdminView(view);
   };
 
+  const getVendorStatusColor = (status) => {
+    const colors = {
+      'pending': 'bg-yellow-100 text-yellow-700',
+      'approved': 'bg-green-100 text-green-700',
+      'rejected': 'bg-red-100 text-red-700',
+      'suspended': 'bg-gray-100 text-gray-700'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-700';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 p-4">  {/* Parent container */}
-      {/* Sidebar or tabs for views */}
+    <div className="min-h-screen bg-gray-100 p-4">
       <div className="flex space-x-4 mb-6">
         <button onClick={() => switchView('orders')} className={`px-4 py-2 rounded ${adminView === 'orders' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
           Orders
         </button>
-        {/* Add other views like products, users */}
+        <button onClick={() => switchView('vendors')} className={`px-4 py-2 rounded ${adminView === 'vendors' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
+          Vendors
+        </button>
       </div>
 
-      {/* Orders Section - Only one block, no duplicate */}
+      {/* Orders Section */}
       {adminView === 'orders' && (
         <div className="bg-white rounded-xl shadow-md p-6">
           <h3 className="text-2xl font-bold mb-6">All Orders</h3>
@@ -95,7 +129,6 @@ const AdminDashboard = ({ currentUser }) => {
                           <option value="Pending">⏳ Pending</option>
                           <option value="In Transit">🚚 In Transit</option>
                           <option value="Delivered">🎉 Delivered</option>
-                          {/* Add more if needed */}
                         </select>
                       </td>
                       <td className="px-4 py-3">
@@ -123,7 +156,86 @@ const AdminDashboard = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Other views jaise products, users - similar tarike se add karo */}
+      {/* Vendors Section */}
+      {adminView === 'vendors' && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h3 className="text-2xl font-bold mb-6">Manage Vendors</h3>
+
+          {allVendors.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Users size={64} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-xl">No vendor requests yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-4 py-3 text-left">Dairy Name</th>
+                    <th className="px-4 py-3 text-left">Owner</th>
+                    <th className="px-4 py-3 text-left">Contact</th>
+                    <th className="px-4 py-3 text-left">Area</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allVendors.map(vendor => (
+                    <tr key={vendor._id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 font-semibold">{vendor.dairyName}</td>
+                      <td className="px-4 py-3">{vendor.ownerName}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm">{vendor.phone}</p>
+                        <p className="text-xs text-gray-500">{vendor.email}</p>
+                      </td>
+                      <td className="px-4 py-3">{vendor.area}, {vendor.city}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getVendorStatusColor(vendor.status)}`}>
+                          {vendor.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {vendor.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleVendorStatusUpdate(vendor._id, 'approved')}
+                              className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleVendorStatusUpdate(vendor._id, 'rejected')}
+                              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {vendor.status === 'approved' && (
+                          <button
+                            onClick={() => handleVendorStatusUpdate(vendor._id, 'suspended')}
+                            className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
+                          >
+                            Suspend
+                          </button>
+                        )}
+                        {vendor.status === 'suspended' && (
+                          <button
+                            onClick={() => handleVendorStatusUpdate(vendor._id, 'approved')}
+                            className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                          >
+                            Reactivate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -144,68 +256,66 @@ const App = () => {
   // Auth States
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState('login');
-  const [authForm, setAuthForm] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
   const passwordInputRef = useRef(null);
 
   const categories = ['All', 'Milk', 'Dahi', 'Paneer', 'Butter', 'Ghee', 'Lassi', 'Buttermilk', 'Ice Cream'];
 
-  // Load user and products on mount
+  // Load user, vendor and products on mount
   useEffect(() => {
-  try {
-    const storedUser = authAPI.getStoredUser();
-    if (storedUser) {
-      setCurrentUser(storedUser);
+    try {
+      const storedUser = authAPI.getStoredUser();
+      if (storedUser) {
+        setCurrentUser(storedUser);
+      }
+      const storedVendor = vendorAPI.getStoredVendor();
+      if (storedVendor) {
+        setCurrentVendor(storedVendor);
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+      localStorage.removeItem('user');
     }
-  } catch (error) {
-    console.error('Error loading user:', error);
-    localStorage.removeItem('user'); // Clear corrupted data
-  }
-  fetchProducts();
-}, []);
-  // Fetch Products with filters
-  // Products fetch करने में
-const fetchProducts = async (filters = {}) => {
-  try {
-    setLoading(true);
-    const response = await productsAPI.getAll(filters);
-    setProducts(response.data.data || response.data || []); // ⬅️ यह change करो
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    setProducts([]); // ⬅️ empty array set करो
-    alert('Failed to load products');
-  } finally {
-    setLoading(false);
-  }
-};
-  // Fetch My Orders
- // fetchMyOrders function update करो
-const fetchMyOrders = async () => {
-  try {
-    const response = await ordersAPI.getMyOrders();
-    const ordersData = Array.isArray(response.data) ? response.data : response.data.data || [];
-    setOrders(ordersData);
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    setOrders([]); // empty array
-  }
-};
+    fetchProducts();
+  }, []);
 
-// Fetch All Orders (Admin)
-const fetchAllOrders = async () => {
-  try {
-    const response = await ordersAPI.getAll();
-    setAllOrders(response.data || []);
-  } catch (error) {
-    console.error('Error fetching all orders:', error);
-    // ADD THIS LINE:
-    if (error.response?.status === 401) {
-      alert('Session expired. Please login again.');
-      handleLogout();
+  const fetchProducts = async (filters = {}) => {
+    try {
+      setLoading(true);
+      const response = await productsAPI.getAll(filters);
+      setProducts(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
+      alert('Failed to load products');
+    } finally {
+      setLoading(false);
     }
-  }
-};
-  // Handle Auth - Updated
+  };
+
+  const fetchMyOrders = async () => {
+    try {
+      const response = await ordersAPI.getMyOrders();
+      const ordersData = Array.isArray(response.data) ? response.data : response.data.data || [];
+      setOrders(ordersData);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setOrders([]);
+    }
+  };
+
+  const fetchAllOrders = async () => {
+    try {
+      const response = await ordersAPI.getAll();
+      setAllOrders(response.data || []);
+    } catch (error) {
+      console.error('Error fetching all orders:', error);
+      if (error.response?.status === 401) {
+        alert('Session expired. Please login again.');
+        handleLogout();
+      }
+    }
+  };
+
   const handleAuth = async (formData, mode) => {
     setLoading(true);
   
@@ -246,7 +356,7 @@ const fetchAllOrders = async () => {
       setLoading(false);
     }
   };
-  // Handle Logout
+
   const handleLogout = () => {
     authAPI.logout();
     setCurrentUser(null);
@@ -256,11 +366,13 @@ const fetchAllOrders = async () => {
     setView('home');
   };
 
-  const handleVendorLoginSuccess=(vendorData)=>{
+  // Vendor Auth Handlers
+  const handleVendorLoginSuccess = (vendorData) => {
     setCurrentVendor(vendorData);
     setView('vendor-dashboard');
   };
-  const handleVendorLogout=()=>{
+
+  const handleVendorLogout = () => {
     vendorAPI.logout();
     setCurrentVendor(null);
     setView('home');
@@ -292,70 +404,59 @@ const fetchAllOrders = async () => {
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Place Order - FIXED
-const placeOrder = async (paymentMethod) => {
-  if (!currentUser) {
-    alert('Please login first!');
-    return;
-  }
-  
-  if (cart.length === 0) {
-    alert('Your cart is empty!');
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    // User name safely get karo
-    const userName = currentUser.fullName || 
-                     `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 
-                     currentUser.name || 
-                     'Customer';
-
-    // User phone safely get karo
-    const userPhone = currentUser.phone || 
-                      currentUser.userPhone || 
-                      '';
-
-    // User address safely get karo
-    const userAddress = currentUser.address || 
-                        currentUser.userAddress || 
-                        '';
+  const placeOrder = async (paymentMethod) => {
+    if (!currentUser) {
+      alert('Please login first!');
+      return;
+    }
     
-    const orderData = {
-      userName,
-      userPhone,
-      userAddress,
-      items: cart.map(item => ({
-        product: item._id,
-        name: item.name,
-        price: item.price,
-        unit: item.unit,
-        quantity: item.quantity,
-        image: item.image
-      })),
-      total: cartTotal,
-      paymentMethod
-    };
+    if (cart.length === 0) {
+      alert('Your cart is empty!');
+      return;
+    }
 
-    console.log('Order Data:', orderData); // Debug ke liye
+    try {
+      setLoading(true);
 
-    const response = await ordersAPI.create(orderData);
-    
-    setCart([]);
-    await fetchMyOrders();
-    await fetchProducts();
-    setView('orders');
-    alert('Order placed successfully! ✅');
-  } catch (error) {
-    console.error('Order error:', error);
-    alert(error.response?.data?.message || 'Failed to place order');
-  } finally {
-    setLoading(false);
-  }
-};
-  // Update Product Price (Admin)
+      const userName = currentUser.fullName || 
+                       `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 
+                       currentUser.name || 
+                       'Customer';
+
+      const userPhone = currentUser.phone || currentUser.userPhone || '';
+      const userAddress = currentUser.address || currentUser.userAddress || '';
+      
+      const orderData = {
+        userName,
+        userPhone,
+        userAddress,
+        items: cart.map(item => ({
+          product: item._id,
+          name: item.name,
+          price: item.price,
+          unit: item.unit,
+          quantity: item.quantity,
+          image: item.image
+        })),
+        total: cartTotal,
+        paymentMethod
+      };
+
+      await ordersAPI.create(orderData);
+      
+      setCart([]);
+      await fetchMyOrders();
+      await fetchProducts();
+      setView('orders');
+      alert('Order placed successfully! ✅');
+    } catch (error) {
+      console.error('Order error:', error);
+      alert(error.response?.data?.message || 'Failed to place order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateProductPrice = async (productId, newPrice) => {
     try {
       await productsAPI.updatePrice(productId, parseFloat(newPrice));
@@ -365,7 +466,6 @@ const placeOrder = async (paymentMethod) => {
     }
   };
 
-  // Update Order Status (Admin)
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       await ordersAPI.updateStatus(orderId, newStatus);
@@ -417,8 +517,11 @@ const placeOrder = async (paymentMethod) => {
                 <Settings size={18} /> Dashboard
               </button>
             )}
-            {!currentUser && !currentVendor && (<button onClick={() => setView('vendor-login')} className="text-white hover:text-blue-200 font-medium">Vendor Login</button>)}
-            {!currentUser && !currentVendor && (<button onClick={() => { setView('vendor-login'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">Vendor Login</button>)}
+            {!currentUser && !currentVendor && (
+              <button onClick={() => setView('vendor-login')} className="hover:text-blue-200 transition flex items-center gap-2 text-sm">
+                🏪 Vendor Login
+              </button>
+            )}
             {currentUser ? (
               <div className="flex items-center gap-3">
                 <span className="text-sm">Hi, {currentUser.fullName || currentUser.firstName}</span>
@@ -448,6 +551,9 @@ const placeOrder = async (paymentMethod) => {
                 <button onClick={() => { setView('cart'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">Cart ({cart.length})</button>
               </>
             )}
+            {!currentUser && !currentVendor && (
+              <button onClick={() => { setView('vendor-login'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">🏪 Vendor Login</button>
+            )}
             {currentUser ? (
               <button onClick={handleLogout} className="block w-full text-left text-red-300 hover:text-red-200">Logout</button>
             ) : (
@@ -458,6 +564,7 @@ const placeOrder = async (paymentMethod) => {
       </div>
     </header>
   );
+
   // HomeView
   const HomeView = () => (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -523,6 +630,20 @@ const placeOrder = async (paymentMethod) => {
         </div>
       </section>
 
+      {/* Become a Vendor Section */}
+      <section className="py-16 bg-gradient-to-r from-green-500 to-green-600">
+        <div className="container mx-auto px-4 text-center text-white">
+          <h3 className="text-3xl font-bold mb-4">🏪 Are You a Dairy Owner?</h3>
+          <p className="text-lg mb-6">Sell your fresh dairy products online and grow your business!</p>
+          <button
+            onClick={() => setView('vendor-register')}
+            className="bg-white text-green-600 px-8 py-3 rounded-lg font-semibold hover:bg-green-50 transition"
+          >
+            Become a Vendor
+          </button>
+        </div>
+      </section>
+
       <section className="py-16 container mx-auto px-4">
         <div className="bg-blue-600 text-white rounded-2xl p-12 text-center">
           <h3 className="text-3xl font-bold mb-6">Contact Us</h3>
@@ -545,9 +666,8 @@ const placeOrder = async (paymentMethod) => {
     </div>
   );
 
-  // ProductsView Component - Replace in App.js
+  // ProductsView Component
   const ProductsView = () => {
-    
     const [addedFeedback, setAddedFeedback] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [minPrice, setMinPrice] = useState('');
@@ -558,8 +678,6 @@ const placeOrder = async (paymentMethod) => {
       return <div>Loading...</div>;
     }
     
-
-    // Apply filters
     const applyFilters = async () => {
       const filters = {
         category: selectedCategory,
@@ -571,7 +689,6 @@ const placeOrder = async (paymentMethod) => {
       await fetchProducts(filters);
     };
 
-    // Reset filters
     const resetFilters = async () => {
       setSearchTerm('');
       setMinPrice('');
@@ -597,9 +714,7 @@ const placeOrder = async (paymentMethod) => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-8 text-gray-800">Our Products</h2>
         
-          {/* Search & Filter Section */}
           <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-            {/* Search Bar */}
             <div className="flex gap-4 mb-4">
               <div className="flex-1 relative">
                 <input
@@ -625,11 +740,9 @@ const placeOrder = async (paymentMethod) => {
               </button>
             </div>
 
-            {/* Advanced Filters */}
             {showFilters && (
               <div className="border-t pt-4 mt-4">
                 <div className="grid md:grid-cols-4 gap-4">
-                  {/* Min Price */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Min Price</label>
                     <input
@@ -640,8 +753,6 @@ const placeOrder = async (paymentMethod) => {
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-
-                  {/* Max Price */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Max Price</label>
                     <input
@@ -652,8 +763,6 @@ const placeOrder = async (paymentMethod) => {
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-
-                  {/* Sort By */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                     <select
@@ -668,8 +777,6 @@ const placeOrder = async (paymentMethod) => {
                       <option value="name_desc">Name: Z to A</option>
                     </select>
                   </div>
-
-                  {/* Reset Button */}
                   <div className="flex items-end">
                     <button
                       onClick={resetFilters}
@@ -683,7 +790,6 @@ const placeOrder = async (paymentMethod) => {
             )}
           </div>
 
-          {/* Category Filter */}
           <div className="mb-8 flex flex-wrap gap-3">
             {categories.map(cat => (
               <button
@@ -699,14 +805,12 @@ const placeOrder = async (paymentMethod) => {
             ))}
           </div>
 
-          {/* Products Count */}
           <div className="mb-4">
             <p className="text-gray-600">
               Showing <span className="font-bold text-blue-600">{filteredProducts.length}</span> products
             </p>
           </div>
 
-          {/* Products Grid */}
           {loading ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-4">🔄</div>
@@ -732,9 +836,8 @@ const placeOrder = async (paymentMethod) => {
                 const showAdded = addedFeedback[product._id];
                 const isOutOfStock = product.stock === 0;
               
-                // Use imageUrl if available, else use emoji
                 const productImage = product.imageUrl
-                  ? `http://localhost:5000${product.imageUrl}`
+                  ? `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'https://milko-bar-dairy-website.onrender.com'}${product.imageUrl}`
                   : product.image;
 
                 return (
@@ -745,7 +848,7 @@ const placeOrder = async (paymentMethod) => {
                           src={productImage}
                           alt={product.name}
                           className="max-h-full max-w-full object-contain"
-                          onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="48" text-anchor="middle" dy=".3em">{product.image}</text></svg>'; }}
+                          onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
                         />
                       ) : (
                         <div className="text-6xl">{product.image}</div>
@@ -754,6 +857,9 @@ const placeOrder = async (paymentMethod) => {
                     <div className="p-4">
                       <h3 className="font-bold text-lg mb-1">{product.name}</h3>
                       <p className="text-gray-600 text-sm mb-2">{product.unit}</p>
+                      {product.vendor && (
+                        <p className="text-xs text-green-600 mb-2">🏪 {product.vendor.dairyName || 'Local Vendor'}</p>
+                      )}
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-2xl font-bold text-blue-600">₹{product.price}</span>
                         <span className={`text-sm font-medium ${isOutOfStock ? 'text-red-500' : 'text-green-500'}`}>
@@ -794,8 +900,6 @@ const placeOrder = async (paymentMethod) => {
       </div>
     );
   };
-  
-
 
   // CartView
   const CartView = () => (
@@ -869,13 +973,12 @@ const placeOrder = async (paymentMethod) => {
     </div>
   );
 
-  // OrdersView Component - Replace in App.js
+  // OrdersView Component
   const OrdersView = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     if (!Array.isArray(orders)) {
       return <div>Loading orders...</div>;
     }
-
 
     const getStatusColor = (status) => {
       const colors = {
@@ -929,14 +1032,12 @@ const placeOrder = async (paymentMethod) => {
       return `${minutes}m remaining`;
     };
 
-    // Order Detail Modal
     const OrderDetailModal = ({ order, onClose }) => {
       if (!order) return null;
 
       return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-t-2xl">
               <div className="flex justify-between items-start">
                 <div>
@@ -953,7 +1054,6 @@ const placeOrder = async (paymentMethod) => {
             </div>
 
             <div className="p-6">
-              {/* Status Badge & Estimated Delivery */}
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className={`px-4 py-2 rounded-full font-semibold flex items-center gap-2 ${getStatusColor(order.status)}`}>
                   <span className="text-xl">{getStatusIcon(order.status)}</span>
@@ -967,28 +1067,21 @@ const placeOrder = async (paymentMethod) => {
                 )}
               </div>
 
-              {/* Order Timeline */}
               <div className="mb-8">
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <TrendingUp className="text-blue-600" />
                   Order Timeline
                 </h3>
                 <div className="relative">
-                  {/* Timeline Line */}
                   <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                
-                  {/* Timeline Items */}
                   <div className="space-y-6">
                     {order.statusHistory && order.statusHistory.length > 0 ? (
                       [...order.statusHistory].reverse().map((history, index) => (
                         <div key={index} className="relative pl-16">
-                          {/* Timeline Dot */}
                           <div className={`absolute left-0 w-12 h-12 rounded-full flex items-center justify-center text-2xl ${index === 0 ? 'bg-blue-600 text-white animate-pulse' : 'bg-gray-200'
                             }`}>
                             {getStatusIcon(history.status)}
                           </div>
-                        
-                          {/* Timeline Content */}
                           <div className={`bg-white border-2 ${index === 0 ? 'border-blue-600' : 'border-gray-200'} rounded-lg p-4`}>
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="font-bold text-lg">{history.status}</h4>
@@ -1005,7 +1098,6 @@ const placeOrder = async (paymentMethod) => {
                 </div>
               </div>
 
-              {/* Delivery Information */}
               <div className="bg-blue-50 rounded-lg p-6 mb-6">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <MapPin className="text-blue-600" />
@@ -1019,7 +1111,6 @@ const placeOrder = async (paymentMethod) => {
                 </div>
               </div>
 
-              {/* Order Items */}
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-bold mb-4">Order Items</h3>
                 <div className="space-y-3">
@@ -1068,7 +1159,6 @@ const placeOrder = async (paymentMethod) => {
               {orders.map(order => (
                 <div key={order._id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition overflow-hidden">
                   <div className="p-6">
-                    {/* Order Header */}
                     <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                       <div>
                         <h3 className="font-bold text-xl mb-1">Order #{order._id.slice(-6)}</h3>
@@ -1087,7 +1177,6 @@ const placeOrder = async (paymentMethod) => {
                       </div>
                     </div>
 
-                    {/* Quick Items Preview */}
                     <div className="mb-4">
                       <div className="flex gap-2 mb-2">
                         {order.items.slice(0, 5).map((item, idx) => (
@@ -1102,7 +1191,6 @@ const placeOrder = async (paymentMethod) => {
                       </p>
                     </div>
 
-                    {/* Order Footer */}
                     <div className="flex flex-wrap justify-between items-center pt-4 border-t">
                       <div>
                         <p className="text-sm text-gray-600">Total Amount</p>
@@ -1123,7 +1211,6 @@ const placeOrder = async (paymentMethod) => {
           )}
         </div>
 
-        {/* Order Detail Modal */}
         {selectedOrder && (
           <OrderDetailModal
             order={selectedOrder}
@@ -1134,17 +1221,42 @@ const placeOrder = async (paymentMethod) => {
     );
   };
 
+  // MAIN RETURN - Vendor views handled separately
+  if (view === 'vendor-register') {
+    return (
+      <VendorRegister
+        onBackToHome={() => setView('home')}
+        onSwitchToLogin={() => setView('vendor-login')}
+      />
+    );
+  }
+
+  if (view === 'vendor-login') {
+    return (
+      <VendorLogin
+        onLoginSuccess={handleVendorLoginSuccess}
+        onBackToHome={() => setView('home')}
+        onSwitchToRegister={() => setView('vendor-register')}
+      />
+    );
+  }
+
+  if (view === 'vendor-dashboard' && currentVendor) {
+    return (
+      <VendorDashboard vendor={currentVendor} onLogout={handleVendorLogout} />
+    );
+  }
+
   return (
     <div className="App">
       <Header />
       
-      {/* Updated AuthModal */}
       <AuthModal
         showAuth={showAuth}
         authMode={authMode}
         onClose={() => setShowAuth(false)}
-        // onSubmit={handleAuth}
-        // loading={loading}
+        onSubmit={handleAuth}
+        loading={loading}
       />
       
       {view === 'home' && <HomeView />}
@@ -1153,7 +1265,7 @@ const placeOrder = async (paymentMethod) => {
       {view === 'orders' && <OrdersView />}
       {view === 'admin-dashboard' && (
         <AdminDashboard
-        currentUser={currentUser}
+          currentUser={currentUser}
           products={products}
           allOrders={allOrders}
           updateProductPrice={updateProductPrice}
@@ -1162,18 +1274,8 @@ const placeOrder = async (paymentMethod) => {
           refreshOrders={fetchAllOrders}
         />
       )}
-
-      {view === 'vendor-login' && (
-        <VendorLogin onLoginSuccess={handleVendorLoginSuccess} onBackToHome={() => setView('home')} onSwitchToRegister={() => setView('vendor-register')} />
-      )}
-      {view === 'vendor-register' && (
-        <VendorRegister onBackToHome={() => setView('home')} onSwitchToLogin={() => setView('vendor-login')} />
-      )}
-      {view === 'vendor-dashboard' && currentVendor && (
-        <VendorDashboard vendor={currentVendor} onLogout={handleVendorLogout} />
-      )}
-
     </div>
   );
 };
+
 export default App;
