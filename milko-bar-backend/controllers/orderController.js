@@ -1,24 +1,32 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { sendOrderConfirmation, sendOrderStatusUpdate } = require('../config/emailService');
-const { sendOrderConfirmationSMS, sendOrderStatusUpdateSMS } = require('../config/smsService');
 
-
-
-/// @desc    Create new order
+// @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 const createOrder = async (req, res) => {
   try {
     const { items, total, paymentMethod, userName, userPhone, userAddress } = req.body;
 
-    console.log('Creating order with data:', { items, total, paymentMethod, userName });
-
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No order items' });
     }
 
-    // Create order
+    // Verify stock availability
+    for (let item of items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        return res.status(404).json({ message: `Product ${item.name} not found` });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ 
+          message: `Insufficient stock for ${product.name}. Available: ${product.stock}` 
+        });
+      }
+    }
+
+    // Create order with initial status history
     const order = await Order.create({
       user: req.user._id,
       userName,
@@ -27,13 +35,24 @@ const createOrder = async (req, res) => {
       items,
       total,
       paymentMethod,
-      paymentStatus: 'Pending',
-      status: 'Pending'
+      paymentStatus: paymentMethod === 'Online' ? 'Pending' : 'Pending',
+      status: 'Pending',
+      statusHistory: [{
+        status: 'Pending',
+        timestamp: new Date(),
+        note: 'Order placed successfully'
+      }]
     });
 
-    console.log('Order created successfully:', order._id);
+    // Update product stock
+    for (let item of items) {
+      await Product.findByIdAndUpdate(
+        item.product,
+        { $inc: { stock: -item.quantity } }
+      );
+    }
 
-    // Send email
+    // Send order confirmation email
     try {
       await sendOrderConfirmation({
         userName: userName,
@@ -46,16 +65,15 @@ const createOrder = async (req, res) => {
         userPhone: userPhone
       });
     } catch (emailError) {
-      console.error('Email error:', emailError);
+      console.error('Email sending failed, but order created:', emailError);
     }
 
     res.status(201).json({
       success: true,
       data: order,
-      message: 'Order placed successfully!'
+      message: 'Order placed successfully! Check your email for confirmation.'
     });
   } catch (error) {
-    console.error('Order creation error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -140,47 +158,30 @@ const updateOrderStatus = async (req, res) => {
       // Update estimated delivery if status changes
       if (status === 'Confirmed') {
         const now = new Date();
-        order.estimatedDelivery = new Date(now.getTime() + (2 * 60 * 60 * 1000));
+        order.estimatedDelivery = new Date(now.getTime() + (2 * 60 * 60 * 1000)); // 2 hours
       } else if (status === 'Processing') {
         const now = new Date();
-        order.estimatedDelivery = new Date(now.getTime() + (90 * 60 * 1000));
+        order.estimatedDelivery = new Date(now.getTime() + (90 * 60 * 1000)); // 90 minutes
       } else if (status === 'In Transit') {
         const now = new Date();
-        order.estimatedDelivery = new Date(now.getTime() + (30 * 60 * 1000));
+        order.estimatedDelivery = new Date(now.getTime() + (30 * 60 * 1000)); // 30 minutes
       }
       
       const updatedOrder = await order.save();
 
-      const orderId = order._id.toString().slice(-6);
-      const userName = `${order.user.firstName} ${order.user.lastName}`;
-
-      // Send notifications - Don't block response
-      if (typeof sendOrderStatusUpdate === 'function') {
-        sendOrderStatusUpdate({
-          userName: userName,
+      // Send status update email (if email service enabled)
+      /* Uncomment when email is setup
+      try {
+        await sendOrderStatusUpdate({
+          userName: `${order.user.firstName} ${order.user.lastName}`,
           email: order.user.email,
-          orderId: orderId,
+          orderId: order._id.toString().slice(-6),
           status: status
-        }).catch(err => console.error('Email failed:', err.message));
+        });
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError);
       }
-
-      if (typeof sendOrderStatusUpdateSMS === 'function') {
-        sendOrderStatusUpdateSMS({
-          userPhone: order.userPhone,
-          userName: order.userName,
-          orderId: orderId,
-          status: status
-        }).catch(err => console.error('SMS failed:', err.message));
-      }
-
-      if (typeof sendOrderStatusUpdateWhatsApp === 'function') {
-        sendOrderStatusUpdateWhatsApp({
-          userPhone: order.userPhone,
-          userName: order.userName,
-          orderId: orderId,
-          status: status
-        }).catch(err => console.error('WhatsApp failed:', err.message));
-      }
+      */
 
       res.json({
         success: true,
