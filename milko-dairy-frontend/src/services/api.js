@@ -187,4 +187,86 @@ export const ordersAPI = {
   },
 };
 
+// ========== VENDOR APIs ==========
+
+export const vendorAPI = {
+  register: async (vendorData) => {
+    const response = await api.post('/vendors/register', vendorData);
+    if (response.data.token) {
+      localStorage.setItem('vendorToken', response.data.token);
+      localStorage.setItem('vendor', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  login: async (credentials) => {
+    const response = await api.post('/vendors/login', credentials);
+    if (response.data.token) {
+      localStorage.setItem('vendorToken', response.data.token);
+      localStorage.setItem('vendor', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  logout: () => {
+    localStorage.removeItem('vendorToken');
+    localStorage.removeItem('vendor');
+  },
+
+  getStoredVendor: () => {
+    const vendor = localStorage.getItem('vendor');
+    return vendor ? JSON.parse(vendor) : null;
+  },
+
+  getAllVendors: async () => {
+    const response = await api.get('/vendors');
+    return response.data;
+  },
+
+  getProfile: async () => {
+    const response = await api.get('/vendors/profile');
+    return response.data;
+  },
+
+  updateVendorStatus: async (id, status) => {
+    const response = await api.patch(`/vendors/${id}/status`, { status });
+    return response.data;
+  },
+
+  getProducts: async () => {
+    const response = await api.get('/vendors/products');
+    return response.data;
+  },
+
+  createProduct: async (productData) => {
+    const response = await api.post('/vendors/products', productData);
+    return response.data;
+  },
+
+  updateProduct: async (id, productData) => {
+    const response = await api.put(`/vendors/products/${id}`, productData);
+    return response.data;
+  },
+
+  deleteProduct: async (id) => {
+    const response = await api.delete(`/vendors/products/${id}`);
+    return response.data;
+  },
+
+  getOrders: async () => {
+    const response = await api.get('/vendors/orders');
+    return response.data;
+  },
+
+  updateOrderStatus: async (id, status) => {
+    const response = await api.put(`/vendors/orders/${id}/status`, { status });
+    return response.data;
+  },
+
+  getEarnings: async () => {
+    const response = await api.get('/vendors/earnings');
+    return response.data;
+  },
+};
+
 export default api;

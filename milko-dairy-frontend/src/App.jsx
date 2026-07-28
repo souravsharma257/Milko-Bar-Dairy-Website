@@ -266,6 +266,11 @@ const App = () => {
       const storedUser = authAPI.getStoredUser();
       if (storedUser) {
         setCurrentUser(storedUser);
+        if (storedUser.role === 'customer') {
+          fetchMyOrders();
+        } else if (storedUser.role === 'admin') {
+          fetchAllOrders();
+        }
       }
       const storedVendor = vendorAPI.getStoredVendor();
       if (storedVendor) {
@@ -499,7 +504,7 @@ const App = () => {
                 <button onClick={() => setView('products')} className="hover:text-blue-200 transition flex items-center gap-2">
                   <Package size={18} /> Products
                 </button>
-                <button onClick={() => setView('orders')} className="hover:text-blue-200 transition flex items-center gap-2">
+                <button onClick={() => { setView('orders'); fetchMyOrders(); }} className="hover:text-blue-200 transition flex items-center gap-2">
                   <TrendingUp size={18} /> My Orders
                 </button>
                 <button onClick={() => setView('cart')} className="hover:text-blue-200 transition relative">
@@ -547,7 +552,7 @@ const App = () => {
             {currentUser && currentUser.role === 'customer' && (
               <>
                 <button onClick={() => { setView('products'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">Products</button>
-                <button onClick={() => { setView('orders'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">My Orders</button>
+                <button onClick={() => { setView('orders'); setShowMobileMenu(false); fetchMyOrders(); }} className="block w-full text-left hover:text-blue-200">My Orders</button>
                 <button onClick={() => { setView('cart'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">Cart ({cart.length})</button>
               </>
             )}
