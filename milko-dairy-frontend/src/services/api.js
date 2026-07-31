@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // Base URL
 const API_URL = process.env.REACT_APP_API_URL || 'https://milko-bar-dairy-website.onrender.com/api';
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
@@ -35,7 +36,6 @@ api.interceptors.request.use(
 // ========== AUTH APIs ==========
 
 export const authAPI = {
-  // Register
   register: async (userData) => {
     const response = await api.post('/auth/register', userData);
     if (response.data.token) {
@@ -45,7 +45,6 @@ export const authAPI = {
     return response.data;
   },
 
-  // Login
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials);
     if (response.data.token) {
@@ -55,13 +54,11 @@ export const authAPI = {
     return response.data;
   },
 
-  // Get current user
   getMe: async () => {
     const response = await api.get('/auth/me');
     return response.data;
   },
 
-  // Update profile
   updateProfile: async (userData) => {
     const response = await api.put('/auth/profile', userData);
     if (response.data.token) {
@@ -71,13 +68,11 @@ export const authAPI = {
     return response.data;
   },
 
-  // Logout
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
 
-  // Get stored user
   getStoredUser: () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
@@ -87,7 +82,6 @@ export const authAPI = {
 // ========== PRODUCTS APIs ==========
 
 export const productsAPI = {
-  // Get all products with filters
   getAll: async (filters = {}) => {
     const { category, search, minPrice, maxPrice, sort } = filters;
     
@@ -102,39 +96,30 @@ export const productsAPI = {
     return response.data;
   },
 
-  // Get single product
   getById: async (id) => {
     const response = await api.get(`/products/${id}`);
     return response.data;
   },
 
-  // Create product with image (Admin)
   create: async (formData) => {
     const response = await api.post('/products', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
-  // Update product with image (Admin)
   update: async (id, formData) => {
     const response = await api.put(`/products/${id}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
-  // Delete product (Admin)
   delete: async (id) => {
     const response = await api.delete(`/products/${id}`);
     return response.data;
   },
 
-  // Update price (Admin)
   updatePrice: async (id, price) => {
     const response = await api.patch(`/products/${id}/price`, { price });
     return response.data;
@@ -144,43 +129,36 @@ export const productsAPI = {
 // ========== ORDERS APIs ==========
 
 export const ordersAPI = {
-  // Create order
   create: async (orderData) => {
     const response = await api.post('/orders', orderData);
     return response.data;
   },
 
-  // Get my orders
   getMyOrders: async () => {
     const response = await api.get('/orders/myorders');
     return response.data;
   },
 
-  // Get all orders (Admin)
   getAll: async () => {
     const response = await api.get('/orders');
     return response.data;
   },
 
-  // Get order by ID
   getById: async (id) => {
     const response = await api.get(`/orders/${id}`);
     return response.data;
   },
 
-  // Update order status (Admin)
   updateStatus: async (id, status) => {
     const response = await api.put(`/orders/${id}/status`, { status });
     return response.data;
   },
 
-  // Update payment status (Admin)
   updatePayment: async (id, paymentStatus) => {
     const response = await api.put(`/orders/${id}/payment`, { paymentStatus });
     return response.data;
   },
 
-  // Delete order (Admin)
   delete: async (id) => {
     const response = await api.delete(`/orders/${id}`);
     return response.data;
@@ -219,7 +197,16 @@ export const vendorAPI = {
   },
 
   getAllVendors: async () => {
-    const response = await api.get('/vendors');
+    const adminToken = localStorage.getItem('token');
+    const response = await api.get('/vendors', {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    return response.data;
+  },
+
+  getNearbyVendors: async (lat, lng) => {
+    const url = lat && lng ? `/vendors/nearby?lat=${lat}&lng=${lng}` : '/vendors/nearby';
+    const response = await api.get(url);
     return response.data;
   },
 
@@ -229,7 +216,10 @@ export const vendorAPI = {
   },
 
   updateVendorStatus: async (id, status) => {
-    const response = await api.patch(`/vendors/${id}/status`, { status });
+    const adminToken = localStorage.getItem('token');
+    const response = await api.put(`/vendors/${id}/status`, { status }, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
     return response.data;
   },
 

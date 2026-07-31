@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, User, Mail, Phone, MapPin, Lock, CheckCircle } from 'lucide-react';
+import { Store, User, Mail, Phone, MapPin, Lock, CheckCircle, Crosshair } from 'lucide-react';
 import { vendorAPI } from './services/api';
 
 const VendorRegister = ({ onBackToHome, onSwitchToLogin }) => {
@@ -13,15 +13,42 @@ const VendorRegister = ({ onBackToHome, onSwitchToLogin }) => {
     address: '',
     area: '',
     city: 'Neemrana',
-    pincode: ''
+    pincode: '',
+    latitude: '',
+    longitude: ''
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [locationStatus, setLocationStatus] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('❌ GPS not supported by your browser');
+      return;
+    }
+
+    setLocationStatus('📍 Detecting location...');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFormData(prev => ({
+          ...prev,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        }));
+        setLocationStatus('✅ Location captured successfully!');
+      },
+      (error) => {
+        setLocationStatus('❌ Could not get location. Please allow location access.');
+        console.error(error);
+      }
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -165,6 +192,26 @@ const VendorRegister = ({ onBackToHome, onSwitchToLogin }) => {
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <MapPin size={18} className="text-blue-600" /> Location Details
               </h3>
+
+              {/* GPS Location Button */}
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={getLocation}
+                  className="w-full bg-blue-50 text-blue-600 border-2 border-blue-200 py-3 rounded-lg font-semibold hover:bg-blue-100 transition flex items-center justify-center gap-2"
+                >
+                  <Crosshair size={18} /> Get My Current Location (GPS)
+                </button>
+                {locationStatus && (
+                  <p className={`text-sm mt-2 ${locationStatus.includes('✅') ? 'text-green-600' : locationStatus.includes('❌') ? 'text-red-600' : 'text-blue-600'}`}>
+                    {locationStatus}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  This helps customers find you easily. Please allow location access when prompted.
+                </p>
+              </div>
+
               <div className="space-y-4">
                 <input
                   type="text"
