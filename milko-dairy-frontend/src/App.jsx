@@ -679,6 +679,45 @@ const App = () => {
     const [maxPrice, setMaxPrice] = useState('');
     const [sortBy, setSortBy] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    const [userLocation, setUserLocation] = useState(null);
+    const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, success, denied
+    const [nearbyVendorIds, setNearbyVendorIds] = useState(null); // null = show all, array = filter
+
+    useEffect(() => {
+      detectLocation();
+    }, []);
+
+    const detectLocation = () => {
+      if (!navigator.geolocation) {
+        setLocationStatus('unsupported');
+        return;
+      }
+
+      setLocationStatus('loading');
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserLocation({ lat, lng });
+          setLocationStatus('success');
+
+          try {
+            const response = await vendorAPI.getNearbyVendors(lat, lng);
+            if (response.locationUsed) {
+              const ids = response.data.map(v => v._id);
+              setNearbyVendorIds(ids);
+            }
+          } catch (error) {
+            console.error('Error fetching nearby vendors:', error);
+          }
+        },
+        (error) => {
+          setLocationStatus('denied');
+          console.error('Location error:', error);
+        }
+      );
+    };
+
     if (!filteredProducts || !Array.isArray(filteredProducts)) {
       return <div>Loading...</div>;
     }
@@ -714,10 +753,34 @@ const App = () => {
     const isInCart = (productId) => cart.some(item => item._id === productId);
     const cartQuantity = (productId) => cart.find(item => item._id === productId)?.quantity || 0;
 
+    // Filter products by nearby vendors (if location detected)
+    const displayProducts = nearbyVendorIds 
+      ? filteredProducts.filter(p => !p.vendor || nearbyVendorIds.includes(p.vendor._id || p.vendor))
+      : filteredProducts;
+
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-8 text-gray-800">Our Products</h2>
+
+          {/* Location Banner */}
+          {locationStatus === 'loading' && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+              📍 Detecting your location for nearby vendors...
+            </div>
+          )}
+          {locationStatus === 'success' && nearbyVendorIds && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+              <span>✅ Showing products from vendors near you</span>
+              <button onClick={detectLocation} className="text-sm underline">Refresh</button>
+            </div>
+          )}
+          {locationStatus === 'denied' && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+              <span>⚠️ Location access denied. Showing all products.</span>
+              <button onClick={detectLocation} className="text-sm underline">Try Again</button>
+            </div>
+          )}
         
           <div className="bg-white rounded-xl shadow-md p-6 mb-8">
             <div className="flex gap-4 mb-4">
@@ -812,7 +875,7 @@ const App = () => {
 
           <div className="mb-4">
             <p className="text-gray-600">
-              Showing <span className="font-bold text-blue-600">{filteredProducts.length}</span> products
+              Showing <span className="font-bold text-blue-600">{displayProducts.length}</span> products
             </p>
           </div>
 
@@ -821,7 +884,7 @@ const App = () => {
               <div className="text-4xl mb-4">🔄</div>
               <p className="text-xl text-gray-600">Loading products...</p>
             </div>
-          ) : filteredProducts.length === 0 ? (
+          ) : displayProducts.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl">
               <div className="text-6xl mb-4">📦</div>
               <p className="text-2xl font-bold text-gray-800 mb-2">No products found</p>
@@ -835,7 +898,7 @@ const App = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredProducts.map(product => {
+              {displayProducts.map(product => {
                 const inCart = isInCart(product._id);
                 const qty = cartQuantity(product._id);
                 const showAdded = addedFeedback[product._id];
@@ -1284,4 +1347,3 @@ const App = () => {
 };
 
 export default App;
-
