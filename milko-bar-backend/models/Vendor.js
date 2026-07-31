@@ -59,6 +59,17 @@ const vendorSchema = new mongoose.Schema({
     type: Number,
     default: 5 // km
   },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    }
+  },
 
   // Business Info
   description: {
@@ -121,6 +132,9 @@ vendorSchema.pre('save', async function(next) {
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
+
+// Geospatial index for location queries
+vendorSchema.index({ location: '2dsphere' });
 
 // Password compare method
 vendorSchema.methods.matchPassword = async function(enteredPassword) {

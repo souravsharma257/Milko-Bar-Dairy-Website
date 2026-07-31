@@ -12,7 +12,8 @@ const {
   updateVendorOrderStatus,
   getVendorEarnings,
   getAllVendors,
-  updateVendorStatus
+  updateVendorStatus,
+  getNearbyVendors
 } = require('../controllers/vendorController');
 const { protectVendor } = require('../middleware/vendorAuth');
 const { protect, admin } = require('../middleware/auth');
@@ -20,6 +21,7 @@ const { protect, admin } = require('../middleware/auth');
 // Public routes
 router.post('/register', registerVendor);
 router.post('/login', loginVendor);
+router.get('/nearby', getNearbyVendors);
 
 // Vendor protected routes
 router.get('/profile', protectVendor, getVendorProfile);

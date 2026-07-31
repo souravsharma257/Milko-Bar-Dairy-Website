@@ -15,14 +15,14 @@ const generateToken = (id) => {
 // @access  Public
 const registerVendor = async (req, res) => {
   try {
-    const { dairyName, ownerName, email, phone, whatsapp, password, address, area, city, pincode } = req.body;
+    const { dairyName, ownerName, email, phone, whatsapp, password, address, area, city, pincode, latitude, longitude } = req.body;
 
     const vendorExists = await Vendor.findOne({ email });
     if (vendorExists) {
       return res.status(400).json({ message: 'Vendor already exists with this email' });
     }
 
-    const vendor = await Vendor.create({
+    const vendorData = {
       dairyName,
       ownerName,
       email,
@@ -34,7 +34,17 @@ const registerVendor = async (req, res) => {
       city: city || 'Neemrana',
       pincode,
       status: 'pending'
-    });
+    };
+
+    // Add location if provided
+    if (latitude && longitude) {
+      vendorData.location = {
+        type: 'Point',
+        coordinates: [parseFloat(longitude), parseFloat(latitude)]
+      };
+    }
+
+    const vendor = await Vendor.create(vendorData);
 
     res.status(201).json({
       success: true,
@@ -286,6 +296,84 @@ const updateVendorStatus = async (req, res) => {
   }
 };
 
+// @desc    Get nearby vendors based on customer location
+// @route   GET /api/vendors/nearby?lat=xx&lng=xx
+// @access  Public
+const getNearbyVendors = async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+
+    if (!lat || !lng) {
+      // No location provided - return all approved vendors
+      const vendors = await Vendor.find({ status: 'approved' }).select('-password');
+      return res.json({ success: true, count: vendors.length, data: vendors, locationUsed: false });
+    }
+
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+
+    // Get all approved vendors
+    const vendors = await Vendor.find({ status: 'approved' }).select('-password');
+
+    // Calculate distance using Haversine formula
+    const vendorsWithDistance = vendors.map(vendor => {
+      const vendorObj = vendor.toObject();
+      
+      if (vendor.location && vendor.location.coordinates && 
+          (vendor.location.coordinates[0] !== 0 || vendor.location.coordinates[1] !== 0)) {
+        const vendorLng = vendor.location.coordinates[0];
+        const vendorLat = vendor.location.coordinates[1];
+        
+        const distance = calculateDistance(latitude, longitude, vendorLat, vendorLng);
+        vendorObj.distance = Math.round(distance * 10) / 10; // Round to 1 decimal
+        vendorObj.withinRadius = distance <= vendor.deliveryRadius;
+      } else {
+        vendorObj.distance = null;
+        vendorObj.withinRadius = true; // No location set - show anyway
+      }
+      
+      return vendorObj;
+    });
+
+    // Sort by distance (nearest first), nulls at end
+    vendorsWithDistance.sort((a, b) => {
+      if (a.distance === null) return 1;
+      if (b.distance === null) return -1;
+      return a.distance - b.distance;
+    });
+
+    // Filter only those within delivery radius
+    const nearbyVendors = vendorsWithDistance.filter(v => v.withinRadius);
+
+    res.json({
+      success: true,
+      count: nearbyVendors.length,
+      data: nearbyVendors,
+      allVendors: vendorsWithDistance,
+      locationUsed: true
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Haversine formula - calculate distance between two GPS coordinates in KM
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
 module.exports = {
   registerVendor,
   loginVendor,
@@ -298,5 +386,6 @@ module.exports = {
   updateVendorOrderStatus,
   getVendorEarnings,
   getAllVendors,
-  updateVendorStatus
+  updateVendorStatus,
+  getNearbyVendors
 };
