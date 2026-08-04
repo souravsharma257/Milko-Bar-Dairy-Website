@@ -682,6 +682,7 @@ const App = () => {
     const [userLocation, setUserLocation] = useState(null);
     const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, success, denied
     const [nearbyVendorIds, setNearbyVendorIds] = useState(null); // null = show all, array = filter
+    const [vendorDistances, setVendorDistances] = useState({}); // { vendorId: { distance, estimatedTimeText } }
 
     useEffect(() => {
       detectLocation();
@@ -706,6 +707,16 @@ const App = () => {
             if (response.locationUsed) {
               const ids = response.data.map(v => v._id);
               setNearbyVendorIds(ids);
+
+              // Save distance/time info per vendor
+              const distMap = {};
+              response.data.forEach(v => {
+                distMap[v._id] = {
+                  distance: v.distance,
+                  estimatedTimeText: v.estimatedTimeText
+                };
+              });
+              setVendorDistances(distMap);
             }
           } catch (error) {
             console.error('Error fetching nearby vendors:', error);
@@ -926,7 +937,14 @@ const App = () => {
                       <h3 className="font-bold text-lg mb-1">{product.name}</h3>
                       <p className="text-gray-600 text-sm mb-2">{product.unit}</p>
                       {product.vendor && (
-                        <p className="text-xs text-green-600 mb-2">🏪 {product.vendor.dairyName || 'Local Vendor'}</p>
+                        <p className="text-xs text-green-600 mb-2 flex items-center gap-2 flex-wrap">
+                          <span>🏪 {product.vendor.dairyName || 'Local Vendor'}</span>
+                          {vendorDistances[product.vendor._id || product.vendor] && (
+                            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                              📍 {vendorDistances[product.vendor._id || product.vendor].distance} km · ⏱️ {vendorDistances[product.vendor._id || product.vendor].estimatedTimeText}
+                            </span>
+                          )}
+                        </p>
                       )}
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-2xl font-bold text-blue-600">₹{product.price}</span>
