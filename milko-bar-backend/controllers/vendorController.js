@@ -327,9 +327,19 @@ const getNearbyVendors = async (req, res) => {
         const distance = calculateDistance(latitude, longitude, vendorLat, vendorLng);
         vendorObj.distance = Math.round(distance * 10) / 10; // Round to 1 decimal
         vendorObj.withinRadius = distance <= vendor.deliveryRadius;
+        
+        // Estimate delivery time: avg 25 km/h local delivery speed + 10 min prep time
+        const travelTimeMinutes = (distance / 25) * 60;
+        const totalMinutes = Math.round(travelTimeMinutes + 10);
+        vendorObj.estimatedMinutes = totalMinutes;
+        vendorObj.estimatedTimeText = totalMinutes < 60 
+          ? `${totalMinutes} min` 
+          : `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`;
       } else {
         vendorObj.distance = null;
         vendorObj.withinRadius = true; // No location set - show anyway
+        vendorObj.estimatedMinutes = null;
+        vendorObj.estimatedTimeText = 'N/A';
       }
       
       return vendorObj;
