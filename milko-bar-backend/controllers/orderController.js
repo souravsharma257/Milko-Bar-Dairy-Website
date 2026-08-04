@@ -1,6 +1,5 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
-const { sendOrderConfirmation, sendOrderStatusUpdate } = require('../config/emailService');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -13,7 +12,8 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'No order items' });
     }
 
-    // Verify stock availability
+    // Verify stock availability and find vendor
+    let orderVendor = null;
     for (let item of items) {
       const product = await Product.findById(item.product);
       if (!product) {
@@ -24,10 +24,14 @@ const createOrder = async (req, res) => {
           message: `Insufficient stock for ${product.name}. Available: ${product.stock}` 
         });
       }
+      // Get vendor from first product that has one
+      if (product.vendor && !orderVendor) {
+        orderVendor = product.vendor;
+      }
     }
 
-    // Create order with initial status history
-    const order = await Order.create({
+    // Create order
+    const orderData = {
       user: req.user._id,
       userName,
       userPhone,
@@ -42,7 +46,14 @@ const createOrder = async (req, res) => {
         timestamp: new Date(),
         note: 'Order placed successfully'
       }]
-    });
+    };
+
+    // Attach vendor if found
+    if (orderVendor) {
+      orderData.vendor = orderVendor;
+    }
+
+    const order = await Order.create(orderData);
 
     // Update product stock
     for (let item of items) {
@@ -52,26 +63,10 @@ const createOrder = async (req, res) => {
       );
     }
 
-    // Send order confirmation email
-    try {
-      await sendOrderConfirmation({
-        userName: userName,
-        email: req.user.email,
-        orderId: order._id.toString().slice(-6),
-        items: items,
-        total: total,
-        paymentMethod: paymentMethod,
-        userAddress: userAddress,
-        userPhone: userPhone
-      });
-    } catch (emailError) {
-      console.error('Email sending failed, but order created:', emailError);
-    }
-
     res.status(201).json({
       success: true,
       data: order,
-      message: 'Order placed successfully! Check your email for confirmation.'
+      message: 'Order placed successfully!'
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -122,7 +117,6 @@ const getOrderById = async (req, res) => {
     const order = await Order.findById(req.params.id).populate('user', 'firstName lastName email phone');
 
     if (order) {
-      // Check if user owns this order or is admin
       if (order.user._id.toString() === req.user._id.toString() || req.user.role === 'admin') {
         res.json(order);
       } else {
@@ -146,7 +140,6 @@ const updateOrderStatus = async (req, res) => {
     const order = await Order.findById(req.params.id).populate('user', 'email firstName lastName');
 
     if (order) {
-      // Add to status history
       order.statusHistory.push({
         status: status,
         timestamp: new Date(),
@@ -155,33 +148,18 @@ const updateOrderStatus = async (req, res) => {
       
       order.status = status;
       
-      // Update estimated delivery if status changes
       if (status === 'Confirmed') {
         const now = new Date();
-        order.estimatedDelivery = new Date(now.getTime() + (2 * 60 * 60 * 1000)); // 2 hours
+        order.estimatedDelivery = new Date(now.getTime() + (2 * 60 * 60 * 1000));
       } else if (status === 'Processing') {
         const now = new Date();
-        order.estimatedDelivery = new Date(now.getTime() + (90 * 60 * 1000)); // 90 minutes
+        order.estimatedDelivery = new Date(now.getTime() + (90 * 60 * 1000));
       } else if (status === 'In Transit') {
         const now = new Date();
-        order.estimatedDelivery = new Date(now.getTime() + (30 * 60 * 1000)); // 30 minutes
+        order.estimatedDelivery = new Date(now.getTime() + (30 * 60 * 1000));
       }
       
       const updatedOrder = await order.save();
-
-      // Send status update email (if email service enabled)
-      /* Uncomment when email is setup
-      try {
-        await sendOrderStatusUpdate({
-          userName: `${order.user.firstName} ${order.user.lastName}`,
-          email: order.user.email,
-          orderId: order._id.toString().slice(-6),
-          status: status
-        });
-      } catch (emailError) {
-        console.error('Email sending failed:', emailError);
-      }
-      */
 
       res.json({
         success: true,
