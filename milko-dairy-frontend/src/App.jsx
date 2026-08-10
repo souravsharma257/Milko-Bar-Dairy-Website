@@ -577,7 +577,7 @@ const App = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-5xl font-bold mb-4">Fresh Dairy Products</h2>
           <p className="text-xl mb-8 text-blue-100">Pure & Healthy Products Delivered to Your Doorstep</p>
-          <p className="text-lg mb-8">📍 Serving Shahjahanpur with Love</p>
+          <p className="text-lg mb-8">📍 Serving Neemrana with Love</p>
           {!currentUser && (
             <button onClick={() => { setShowAuth(true); setAuthMode('register'); }} className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition shadow-lg">
               Get Started - Register Now
