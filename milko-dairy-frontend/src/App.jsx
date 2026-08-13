@@ -252,6 +252,9 @@ const App = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(false);
+
+  // NEW: Blinkit-style delivery estimate (nearest vendor distance/time from current location)
+  const [deliveryEstimate, setDeliveryEstimate] = useState(null); // { distance, estimatedTimeText, vendorName }
   
   // Auth States
   const [showAuth, setShowAuth] = useState(false);
@@ -281,6 +284,7 @@ const App = () => {
       localStorage.removeItem('user');
     }
     fetchProducts();
+    detectDeliveryEstimate(); // NEW: fetch nearest-vendor distance/time for the top banner
   }, []);
 
   const fetchProducts = async (filters = {}) => {
@@ -295,6 +299,35 @@ const App = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // NEW: Detect current location and find nearest vendor's distance/time for the Blinkit-style banner
+  const detectDeliveryEstimate = () => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        try {
+          const response = await vendorAPI.getNearbyVendors(lat, lng);
+          if (response.locationUsed && response.data && response.data.length > 0) {
+            const nearest = response.data[0]; // already sorted by distance, nearest first
+            setDeliveryEstimate({
+              distance: nearest.distance,
+              estimatedTimeText: nearest.estimatedTimeText,
+              vendorName: nearest.dairyName
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching delivery estimate:', error);
+        }
+      },
+      (error) => {
+        console.error('Location error:', error);
+      }
+    );
   };
 
   const fetchMyOrders = async () => {
@@ -482,16 +515,49 @@ const App = () => {
 
   const filteredProducts = selectedCategory === 'All' ? products : products.filter(p => p.category === selectedCategory);
 
+  // NEW: helper to format distance nicely - avoids showing a bare "0 km"
+  const formatDistanceText = (distance) => {
+    if (distance === null || distance === undefined) return '';
+    if (distance < 0.5) return 'Nearby';
+    return `${distance} km away`;
+  };
+
   // Header Component
   const Header = () => (
     <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg sticky top-0 z-50">
+
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="text-4xl">🥛</div>
             <div>
               <h1 className="text-2xl font-bold">Milko Bar Dairy</h1>
-              <p className="text-xs text-blue-200">Fresh Dairy Products - Shahjahanpur</p>
+              {/* NEW: Blinkit-style delivery time + location, right under the brand name */}
+              {deliveryEstimate ? (
+                <button
+                  onClick={detectDeliveryEstimate}
+                  className="flex items-baseline gap-1.5 hover:opacity-90 transition"
+                >
+                  <span className="text-lg font-extrabold leading-none">
+                    {deliveryEstimate.estimatedTimeText}
+                  </span>
+                  <span className="text-xs text-blue-200 leading-none">delivery</span>
+                  <span className="text-blue-200 text-xs">▾</span>
+                </button>
+              ) : (
+                <p className="text-xs text-blue-200">Fresh Dairy Products - Shahjahanpur</p>
+              )}
+              {deliveryEstimate && (
+                <p className="text-[11px] text-blue-200 flex items-center gap-1 mt-0.5">
+                  <MapPin size={11} />
+                  <span>
+                    {deliveryEstimate.vendorName ? `From ${deliveryEstimate.vendorName}` : 'Your location'}
+                    {deliveryEstimate.distance !== null && deliveryEstimate.distance !== undefined
+                      ? ` · ${formatDistanceText(deliveryEstimate.distance)}`
+                      : ''}
+                  </span>
+                </p>
+              )}
             </div>
           </div>
           
@@ -769,6 +835,18 @@ const App = () => {
       ? filteredProducts.filter(p => !p.vendor || nearbyVendorIds.includes(p.vendor._id || p.vendor))
       : filteredProducts;
 
+    // NEW: format a vendor's distance/time nicely - shows "Nearby" instead of a bare "0 km"
+    const formatVendorDistanceTime = (info) => {
+      if (!info) return '';
+      const { distance, estimatedTimeText } = info;
+      const distText = distance === null || distance === undefined
+        ? 'N/A'
+        : distance < 0.5
+          ? 'Nearby'
+          : `${distance} km`;
+      return `📍 ${distText} · ⏱️ ${estimatedTimeText}`;
+    };
+
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
@@ -941,7 +1019,7 @@ const App = () => {
                           <span>🏪 {product.vendor.dairyName || 'Local Vendor'}</span>
                           {vendorDistances[product.vendor._id || product.vendor] && (
                             <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                              📍 {vendorDistances[product.vendor._id || product.vendor].distance} km · ⏱️ {vendorDistances[product.vendor._id || product.vendor].estimatedTimeText}
+                              {formatVendorDistanceTime(vendorDistances[product.vendor._id || product.vendor])}
                             </span>
                           )}
                         </p>
