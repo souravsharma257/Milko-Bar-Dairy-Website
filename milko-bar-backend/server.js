@@ -13,15 +13,23 @@ connectDB();
 const app = express();
 
 // CORS configuration
-const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'https://milko-bar-dairy.netlify.app'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://milko-bar-dairy-website-git-main-milko-dairy.vercel.app",
+  // /\.vercel\.app$/   // sab Vercel preview URLs allow karega
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.some(o => 
+        o instanceof RegExp ? o.test(origin) : o === origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
 
 // Middleware
 app.use(cors(corsOptions));
