@@ -6,7 +6,7 @@ const Product = require('../models/Product');
 // @access  Private
 const createOrder = async (req, res) => {
   try {
-    const { items, total, paymentMethod, userName, userPhone, userAddress } = req.body;
+    const { items, total, paymentMethod, userName, userPhone, userAddress, estimatedMinutes } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No order items' });
@@ -53,6 +53,12 @@ const createOrder = async (req, res) => {
       orderData.vendor = orderVendor;
     }
 
+    // Set dynamic estimated delivery based on actual distance/time
+    if (estimatedMinutes && estimatedMinutes > 0) {
+      const now = new Date();
+      orderData.estimatedDelivery = new Date(now.getTime() + (estimatedMinutes * 60 * 1000));
+    }
+
     const order = await Order.create(orderData);
 
     // Update product stock
@@ -78,7 +84,9 @@ const createOrder = async (req, res) => {
 // @access  Private
 const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: req.user._id })
+      .populate('vendor', 'dairyName phone whatsapp area city')
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
