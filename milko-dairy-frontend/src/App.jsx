@@ -485,13 +485,13 @@ const App = () => {
 
   // Header Component
   const Header = () => (
-    <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg sticky top-0 z-50">
+    <header className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white shadow-lg sticky top-0 z-50 backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="text-4xl">🥛</div>
+            <div className="text-4xl drop-shadow-lg">🥛</div>
             <div>
-              <h1 className="text-2xl font-bold">Milko Bar Dairy</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight">Milko Bar Dairy</h1>
               <p className="text-xs text-blue-200">Fresh Dairy Products - Shahjahanpur</p>
             </div>
           </div>
@@ -574,19 +574,27 @@ const App = () => {
   // HomeView
   const HomeView = () => (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-5xl font-bold mb-4">Fresh Dairy Products</h2>
-          <p className="text-xl mb-8 text-blue-100">Pure & Healthy Products Delivered to Your Doorstep</p>
-          <p className="text-lg mb-8">📍 Serving Shahjahanpur with Love</p>
+      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white py-24 overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 text-9xl">🥛</div>
+          <div className="absolute bottom-10 right-10 text-9xl">🧈</div>
+          <div className="absolute top-1/2 left-1/3 text-7xl">🥣</div>
+        </div>
+        <div className="container mx-auto px-4 text-center relative z-10">
+          <div className="inline-block mb-4 px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium">
+            🥛 Fresh from Local Dairies
+          </div>
+          <h2 className="text-5xl md:text-6xl font-extrabold mb-4 tracking-tight">Fresh Dairy Products</h2>
+          <p className="text-xl mb-2 text-blue-100">Pure & Healthy Products Delivered to Your Doorstep</p>
+          <p className="text-lg mb-8 text-blue-200">📍 Serving Shahjahanpur with Love</p>
           {!currentUser && (
-            <button onClick={() => { setShowAuth(true); setAuthMode('register'); }} className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition shadow-lg">
-              Get Started - Register Now
+            <button onClick={() => { setShowAuth(true); setAuthMode('register'); }} className="bg-white text-blue-700 px-8 py-4 rounded-full text-lg font-bold hover:bg-blue-50 hover:scale-105 transition-all shadow-2xl">
+              Get Started - Register Now →
             </button>
           )}
           {currentUser && currentUser.role === 'customer' && (
-            <button onClick={() => setView('products')} className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition shadow-lg">
-              Shop Now
+            <button onClick={() => setView('products')} className="bg-white text-blue-700 px-8 py-4 rounded-full text-lg font-bold hover:bg-blue-50 hover:scale-105 transition-all shadow-2xl">
+              Shop Now →
             </button>
           )}
         </div>
@@ -595,31 +603,31 @@ const App = () => {
       <section className="py-16 container mx-auto px-4">
         <h3 className="text-3xl font-bold text-center mb-12 text-gray-800">Why Choose Milko Bar Dairy?</h3>
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="bg-white p-8 rounded-xl shadow-lg text-center hover:shadow-xl transition">
-            <div className="text-5xl mb-4">🥛</div>
-            <h4 className="text-xl font-bold mb-2">100% Pure</h4>
+          <div className="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
+            <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">🥛</div>
+            <h4 className="text-xl font-bold mb-2 text-gray-800">100% Pure</h4>
             <p className="text-gray-600">Farm fresh dairy products with no additives</p>
           </div>
-          <div className="bg-white p-8 rounded-xl shadow-lg text-center hover:shadow-xl transition">
-            <div className="text-5xl mb-4">🚚</div>
-            <h4 className="text-xl font-bold mb-2">Fast Delivery</h4>
+          <div className="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
+            <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">🚚</div>
+            <h4 className="text-xl font-bold mb-2 text-gray-800">Fast Delivery</h4>
             <p className="text-gray-600">Quick home delivery across Shahjahanpur</p>
           </div>
-          <div className="bg-white p-8 rounded-xl shadow-lg text-center hover:shadow-xl transition">
-            <div className="text-5xl mb-4">💰</div>
-            <h4 className="text-xl font-bold mb-2">Best Prices</h4>
+          <div className="group bg-white p-8 rounded-2xl shadow-lg text-center hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
+            <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">💰</div>
+            <h4 className="text-xl font-bold mb-2 text-gray-800">Best Prices</h4>
             <p className="text-gray-600">Competitive rates with premium quality</p>
           </div>
         </div>
       </section>
 
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4">
           <h3 className="text-3xl font-bold text-center mb-12 text-gray-800">Our Products</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {categories.slice(1, 9).map(cat => (
-              <div key={cat} className="bg-white p-6 rounded-xl shadow-md text-center hover:shadow-lg transition cursor-pointer" onClick={() => { setSelectedCategory(cat); setView('products'); }}>
-                <div className="text-4xl mb-3">
+              <div key={cat} className="group bg-white p-6 rounded-2xl shadow-md text-center hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border border-gray-100" onClick={() => { setSelectedCategory(cat); setView('products'); }}>
+                <div className="text-4xl mb-3 group-hover:scale-125 transition-transform">
                   {cat === 'Milk' && '🥛'}
                   {cat === 'Dahi' && '🥣'}
                   {cat === 'Paneer' && '🧈'}
@@ -629,7 +637,7 @@ const App = () => {
                   {cat === 'Buttermilk' && '🥤'}
                   {cat === 'Ice Cream' && '🍨'}
                 </div>
-                <h4 className="font-semibold text-gray-800">{cat}</h4>
+                <h4 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{cat}</h4>
               </div>
             ))}
           </div>
@@ -637,15 +645,16 @@ const App = () => {
       </section>
 
       {/* Become a Vendor Section */}
-      <section className="py-16 bg-gradient-to-r from-green-500 to-green-600">
-        <div className="container mx-auto px-4 text-center text-white">
-          <h3 className="text-3xl font-bold mb-4">🏪 Are You a Dairy Owner?</h3>
-          <p className="text-lg mb-6">Sell your fresh dairy products online and grow your business!</p>
+      <section className="py-16 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 relative overflow-hidden">
+        <div className="absolute top-0 right-0 text-9xl opacity-10">🏪</div>
+        <div className="container mx-auto px-4 text-center text-white relative z-10">
+          <h3 className="text-3xl md:text-4xl font-extrabold mb-4">🏪 Are You a Dairy Owner?</h3>
+          <p className="text-lg mb-6 text-green-50">Sell your fresh dairy products online and grow your business!</p>
           <button
             onClick={() => setView('vendor-register')}
-            className="bg-white text-green-600 px-8 py-3 rounded-lg font-semibold hover:bg-green-50 transition"
+            className="bg-white text-green-600 px-8 py-4 rounded-full font-bold hover:bg-green-50 hover:scale-105 transition-all shadow-2xl"
           >
-            Become a Vendor
+            Become a Vendor →
           </button>
         </div>
       </section>
@@ -990,17 +999,20 @@ const App = () => {
                   : product.image;
 
                 return (
-                  <div key={product._id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition overflow-hidden">
-                    <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-8 text-center h-48 flex items-center justify-center">
+                  <div key={product._id} className="group bg-white rounded-2xl shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100">
+                    <div className="bg-gradient-to-br from-blue-100 via-blue-50 to-white p-8 text-center h-48 flex items-center justify-center relative">
+                      {isOutOfStock && (
+                        <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">SOLD OUT</span>
+                      )}
                       {product.imageUrl ? (
                         <img
                           src={productImage}
                           alt={product.name}
-                          className="max-h-full max-w-full object-contain"
+                          className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-300"
                           onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="text-6xl">{product.image}</div>
+                        <div className="text-7xl group-hover:scale-110 transition-transform duration-300">{product.image}</div>
                       )}
                     </div>
                     <div className="p-4">
