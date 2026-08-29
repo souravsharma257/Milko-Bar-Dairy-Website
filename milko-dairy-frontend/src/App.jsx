@@ -252,9 +252,6 @@ const App = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(false);
-
-  // NEW: Blinkit-style delivery estimate (nearest vendor distance/time from current location)
-  const [deliveryEstimate, setDeliveryEstimate] = useState(null); // { distance, estimatedTimeText, vendorName }
   
   // Auth States
   const [showAuth, setShowAuth] = useState(false);
@@ -284,7 +281,6 @@ const App = () => {
       localStorage.removeItem('user');
     }
     fetchProducts();
-    detectDeliveryEstimate(); // NEW: fetch nearest-vendor distance/time for the top banner
   }, []);
 
   const fetchProducts = async (filters = {}) => {
@@ -299,35 +295,6 @@ const App = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // NEW: Detect current location and find nearest vendor's distance/time for the Blinkit-style banner
-  const detectDeliveryEstimate = () => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        try {
-          const response = await vendorAPI.getNearbyVendors(lat, lng);
-          if (response.locationUsed && response.data && response.data.length > 0) {
-            const nearest = response.data[0]; // already sorted by distance, nearest first
-            setDeliveryEstimate({
-              distance: nearest.distance,
-              estimatedTimeText: nearest.estimatedTimeText,
-              vendorName: nearest.dairyName
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching delivery estimate:', error);
-        }
-      },
-      (error) => {
-        console.error('Location error:', error);
-      }
-    );
   };
 
   const fetchMyOrders = async () => {
@@ -477,7 +444,8 @@ const App = () => {
           image: item.image
         })),
         total: cartTotal,
-        paymentMethod
+        paymentMethod,
+        estimatedMinutes: cart[0]?.estimatedMinutes || null
       };
 
       await ordersAPI.create(orderData);
@@ -515,49 +483,16 @@ const App = () => {
 
   const filteredProducts = selectedCategory === 'All' ? products : products.filter(p => p.category === selectedCategory);
 
-  // NEW: helper to format distance nicely - avoids showing a bare "0 km"
-  const formatDistanceText = (distance) => {
-    if (distance === null || distance === undefined) return '';
-    if (distance < 0.5) return 'Nearby';
-    return `${distance} km away`;
-  };
-
   // Header Component
   const Header = () => (
     <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg sticky top-0 z-50">
-
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="text-4xl">🥛</div>
             <div>
               <h1 className="text-2xl font-bold">Milko Bar Dairy</h1>
-              {/* NEW: Blinkit-style delivery time + location, right under the brand name */}
-              {deliveryEstimate ? (
-                <button
-                  onClick={detectDeliveryEstimate}
-                  className="flex items-baseline gap-1.5 hover:opacity-90 transition"
-                >
-                  <span className="text-lg font-extrabold leading-none">
-                    {deliveryEstimate.estimatedTimeText}
-                  </span>
-                  <span className="text-xs text-blue-200 leading-none">delivery</span>
-                  <span className="text-blue-200 text-xs">▾</span>
-                </button>
-              ) : (
-                <p className="text-xs text-blue-200">Fresh Dairy Products - Shahjahanpur</p>
-              )}
-              {deliveryEstimate && (
-                <p className="text-[11px] text-blue-200 flex items-center gap-1 mt-0.5">
-                  <MapPin size={11} />
-                  <span>
-                    {deliveryEstimate.vendorName ? `From ${deliveryEstimate.vendorName}` : 'Your location'}
-                    {deliveryEstimate.distance !== null && deliveryEstimate.distance !== undefined
-                      ? ` · ${formatDistanceText(deliveryEstimate.distance)}`
-                      : ''}
-                  </span>
-                </p>
-              )}
+              <p className="text-xs text-blue-200">Fresh Dairy Products - Shahjahanpur</p>
             </div>
           </div>
           
@@ -643,7 +578,7 @@ const App = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-5xl font-bold mb-4">Fresh Dairy Products</h2>
           <p className="text-xl mb-8 text-blue-100">Pure & Healthy Products Delivered to Your Doorstep</p>
-          <p className="text-lg mb-8">📍 Serving Neemrana with Love</p>
+          <p className="text-lg mb-8">📍 Serving Shahjahanpur with Love</p>
           {!currentUser && (
             <button onClick={() => { setShowAuth(true); setAuthMode('register'); }} className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition shadow-lg">
               Get Started - Register Now
@@ -746,13 +681,38 @@ const App = () => {
     const [sortBy, setSortBy] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [userLocation, setUserLocation] = useState(null);
-    const [locationStatus, setLocationStatus] = useState('idle'); // idle, loading, success, denied
-    const [nearbyVendorIds, setNearbyVendorIds] = useState(null); // null = show all, array = filter
-    const [vendorDistances, setVendorDistances] = useState({}); // { vendorId: { distance, estimatedTimeText } }
+    const [locationStatus, setLocationStatus] = useState('idle');
+    const [nearbyVendorIds, setNearbyVendorIds] = useState(null);
+    const [vendorDistances, setVendorDistances] = useState({});
+    const [manualAddress, setManualAddress] = useState('');
+    const [showManualInput, setShowManualInput] = useState(false);
+    const [manualSearching, setManualSearching] = useState(false);
 
     useEffect(() => {
       detectLocation();
     }, []);
+
+    const fetchNearbyForLocation = async (lat, lng) => {
+      try {
+        const response = await vendorAPI.getNearbyVendors(lat, lng);
+        if (response.locationUsed) {
+          const ids = response.data.map(v => v._id);
+          setNearbyVendorIds(ids);
+
+          const distMap = {};
+          response.data.forEach(v => {
+            distMap[v._id] = {
+              distance: v.distance,
+              estimatedTimeText: v.estimatedTimeText,
+              estimatedMinutes: v.estimatedMinutes
+            };
+          });
+          setVendorDistances(distMap);
+        }
+      } catch (error) {
+        console.error('Error fetching nearby vendors:', error);
+      }
+    };
 
     const detectLocation = () => {
       if (!navigator.geolocation) {
@@ -767,32 +727,41 @@ const App = () => {
           const lng = position.coords.longitude;
           setUserLocation({ lat, lng });
           setLocationStatus('success');
-
-          try {
-            const response = await vendorAPI.getNearbyVendors(lat, lng);
-            if (response.locationUsed) {
-              const ids = response.data.map(v => v._id);
-              setNearbyVendorIds(ids);
-
-              // Save distance/time info per vendor
-              const distMap = {};
-              response.data.forEach(v => {
-                distMap[v._id] = {
-                  distance: v.distance,
-                  estimatedTimeText: v.estimatedTimeText
-                };
-              });
-              setVendorDistances(distMap);
-            }
-          } catch (error) {
-            console.error('Error fetching nearby vendors:', error);
-          }
+          await fetchNearbyForLocation(lat, lng);
         },
         (error) => {
           setLocationStatus('denied');
           console.error('Location error:', error);
         }
       );
+    };
+
+    const searchManualAddress = async () => {
+      if (!manualAddress.trim()) return;
+      setManualSearching(true);
+      try {
+        // Free OpenStreetMap geocoding - no API key needed
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(manualAddress)}&limit=1`
+        );
+        const results = await response.json();
+
+        if (results && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lng = parseFloat(results[0].lon);
+          setUserLocation({ lat, lng });
+          setLocationStatus('success');
+          await fetchNearbyForLocation(lat, lng);
+          setShowManualInput(false);
+        } else {
+          alert('Location not found. Try a more specific address (e.g., "Neemrana, Rajasthan").');
+        }
+      } catch (error) {
+        alert('Could not search location. Please try again.');
+        console.error(error);
+      } finally {
+        setManualSearching(false);
+      }
     };
 
     if (!filteredProducts || !Array.isArray(filteredProducts)) {
@@ -819,8 +788,8 @@ const App = () => {
       await fetchProducts({ category: 'All' });
     };
 
-    const handleAddToCart = (product) => {
-      addToCart(product);
+    const handleAddToCart = (product, estimatedMinutes) => {
+      addToCart({ ...product, estimatedMinutes });
       setAddedFeedback(prev => ({ ...prev, [product._id]: true }));
       setTimeout(() => {
         setAddedFeedback(prev => ({ ...prev, [product._id]: false }));
@@ -835,18 +804,6 @@ const App = () => {
       ? filteredProducts.filter(p => !p.vendor || nearbyVendorIds.includes(p.vendor._id || p.vendor))
       : filteredProducts;
 
-    // NEW: format a vendor's distance/time nicely - shows "Nearby" instead of a bare "0 km"
-    const formatVendorDistanceTime = (info) => {
-      if (!info) return '';
-      const { distance, estimatedTimeText } = info;
-      const distText = distance === null || distance === undefined
-        ? 'N/A'
-        : distance < 0.5
-          ? 'Nearby'
-          : `${distance} km`;
-      return `📍 ${distText} · ⏱️ ${estimatedTimeText}`;
-    };
-
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
@@ -859,15 +816,50 @@ const App = () => {
             </div>
           )}
           {locationStatus === 'success' && nearbyVendorIds && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between flex-wrap gap-2">
               <span>✅ Showing products from vendors near you</span>
-              <button onClick={detectLocation} className="text-sm underline">Refresh</button>
+              <div className="flex gap-3">
+                <button onClick={detectLocation} className="text-sm underline">Refresh</button>
+                <button onClick={() => setShowManualInput(!showManualInput)} className="text-sm underline">Change Location</button>
+              </div>
             </div>
           )}
           {locationStatus === 'denied' && (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between flex-wrap gap-2">
               <span>⚠️ Location access denied. Showing all products.</span>
-              <button onClick={detectLocation} className="text-sm underline">Try Again</button>
+              <div className="flex gap-3">
+                <button onClick={detectLocation} className="text-sm underline">Try Again</button>
+                <button onClick={() => setShowManualInput(!showManualInput)} className="text-sm underline">Enter Manually</button>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Location Input */}
+          {showManualInput && (
+            <div className="bg-white border-2 border-blue-200 rounded-lg p-4 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                📍 Enter your area/city manually
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g., Jalwas, Neemrana, Rajasthan"
+                  value={manualAddress}
+                  onChange={(e) => setManualAddress(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && searchManualAddress()}
+                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={searchManualAddress}
+                  disabled={manualSearching}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {manualSearching ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Type your area, village, or city name to find nearby dairy vendors
+              </p>
             </div>
           )}
         
@@ -1019,7 +1011,7 @@ const App = () => {
                           <span>🏪 {product.vendor.dairyName || 'Local Vendor'}</span>
                           {vendorDistances[product.vendor._id || product.vendor] && (
                             <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                              {formatVendorDistanceTime(vendorDistances[product.vendor._id || product.vendor])}
+                              📍 {vendorDistances[product.vendor._id || product.vendor].distance} km · ⏱️ {vendorDistances[product.vendor._id || product.vendor].estimatedTimeText}
                             </span>
                           )}
                         </p>
@@ -1031,7 +1023,7 @@ const App = () => {
                         </span>
                       </div>
                       <button
-                        onClick={() => !isOutOfStock && handleAddToCart(product)}
+                        onClick={() => !isOutOfStock && handleAddToCart(product, vendorDistances[product.vendor?._id || product.vendor]?.estimatedMinutes)}
                         disabled={isOutOfStock || showAdded}
                         className={`
                         w-full py-2 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105
@@ -1206,6 +1198,9 @@ const App = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-bold">Order #{order._id.slice(-6)}</h2>
+                  {order.vendor && (
+                    <p className="text-blue-100 text-sm mb-1">🏪 {order.vendor.dairyName}</p>
+                  )}
                   <p className="text-blue-100 mt-1">Placed on {formatTime(order.orderDate)}</p>
                 </div>
                 <button
@@ -1326,6 +1321,9 @@ const App = () => {
                     <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                       <div>
                         <h3 className="font-bold text-xl mb-1">Order #{order._id.slice(-6)}</h3>
+                        {order.vendor && (
+                          <p className="text-sm text-green-600 font-medium mb-1">🏪 {order.vendor.dairyName}</p>
+                        )}
                         <p className="text-sm text-gray-600">{formatTime(order.orderDate)}</p>
                       </div>
                       <div className="flex flex-wrap gap-3 items-center">
