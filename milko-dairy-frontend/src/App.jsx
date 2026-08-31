@@ -731,6 +731,8 @@ const App = () => {
     const [manualAddress, setManualAddress] = useState('');
     const [showManualInput, setShowManualInput] = useState(false);
     const [manualSearching, setManualSearching] = useState(false);
+    const [selectedVendorId, setSelectedVendorId] = useState('all');
+    const [availableVendors, setAvailableVendors] = useState([]);
 
     useEffect(() => {
       detectLocation();
@@ -742,13 +744,15 @@ const App = () => {
         if (response.locationUsed) {
           const ids = response.data.map(v => v._id);
           setNearbyVendorIds(ids);
+          setAvailableVendors(response.data);
 
           const distMap = {};
           response.data.forEach(v => {
             distMap[v._id] = {
               distance: v.distance,
               estimatedTimeText: v.estimatedTimeText,
-              estimatedMinutes: v.estimatedMinutes
+              estimatedMinutes: v.estimatedMinutes,
+              dairyName: v.dairyName
             };
           });
           setVendorDistances(distMap);
@@ -833,7 +837,12 @@ const App = () => {
     };
 
     const handleAddToCart = (product, estimatedMinutes) => {
-      addToCart({ ...product, estimatedMinutes });
+      const vendorInfo = vendorDistances[product.vendor?._id || product.vendor];
+      addToCart({ 
+        ...product, 
+        estimatedMinutes,
+        estimatedTimeTextDisplay: vendorInfo?.estimatedTimeText 
+      });
       setAddedFeedback(prev => ({ ...prev, [product._id]: true }));
       setTimeout(() => {
         setAddedFeedback(prev => ({ ...prev, [product._id]: false }));
@@ -844,9 +853,14 @@ const App = () => {
     const cartQuantity = (productId) => cart.find(item => item._id === productId)?.quantity || 0;
 
     // Filter products by nearby vendors (if location detected)
-    const displayProducts = nearbyVendorIds 
+    let displayProducts = nearbyVendorIds 
       ? filteredProducts.filter(p => !p.vendor || nearbyVendorIds.includes(p.vendor._id || p.vendor))
       : filteredProducts;
+
+    // Further filter by selected specific vendor
+    if (selectedVendorId !== 'all') {
+      displayProducts = displayProducts.filter(p => (p.vendor?._id || p.vendor) === selectedVendorId);
+    }
 
     return (
       <div className="min-h-screen bg-gray-50 py-8">
