@@ -252,6 +252,8 @@ const App = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(false);
+  const [userLocationName, setUserLocationName] = useState('');
+  const [userCoords, setUserCoords] = useState(null);
   
   // Auth States
   const [showAuth, setShowAuth] = useState(false);
