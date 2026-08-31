@@ -283,7 +283,35 @@ const App = () => {
       localStorage.removeItem('user');
     }
     fetchProducts();
+    detectHeaderLocation();
   }, []);
+
+  const detectHeaderLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserCoords({ lat, lng });
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+          );
+          const data = await response.json();
+          const address = data.address || {};
+          const area = address.village || address.town || address.suburb || address.city_district || '';
+          const city = address.city || address.county || '';
+          const name = [area, city].filter(Boolean).join(', ') || 'Location detected';
+          setUserLocationName(name);
+        } catch (error) {
+          setUserLocationName('Location detected');
+        }
+      },
+      () => {
+        setUserLocationName('');
+      }
+    );
+  };
 
   const fetchProducts = async (filters = {}) => {
     try {
@@ -495,6 +523,11 @@ const App = () => {
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight">Milko Bar Dairy</h1>
               <p className="text-xs text-blue-200">Fresh Dairy Products - Shahjahanpur</p>
+              {userLocationName && (
+                <p className="text-xs text-green-300 flex items-center gap-1 mt-0.5">
+                  <MapPin size={10} /> {userLocationName}
+                </p>
+              )}
             </div>
           </div>
           
