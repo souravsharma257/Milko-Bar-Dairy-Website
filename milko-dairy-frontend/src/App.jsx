@@ -478,13 +478,20 @@ const App = () => {
         estimatedMinutes: cart[0]?.estimatedMinutes || null
       };
 
+      const orderVendorName = cart[0]?.vendorNameDisplay || cart[0]?.vendor?.dairyName || null;
+      const orderEstimatedTimeText = cart[0]?.estimatedTimeTextDisplay || null;
+
       await ordersAPI.create(orderData);
       
       setCart([]);
       await fetchMyOrders();
       await fetchProducts();
       setView('orders');
-      alert('Order placed successfully! ✅');
+
+      const successLines = ['Order placed successfully! ✅'];
+      if (orderVendorName) successLines.push(`🏪 Vendor: ${orderVendorName}`);
+      if (orderEstimatedTimeText) successLines.push(`⏱️ Estimated delivery: ${orderEstimatedTimeText}`);
+      alert(successLines.join('\n'));
     } catch (error) {
       console.error('Order error:', error);
       alert(error.response?.data?.message || 'Failed to place order');
@@ -841,7 +848,8 @@ const App = () => {
       addToCart({ 
         ...product, 
         estimatedMinutes,
-        estimatedTimeTextDisplay: vendorInfo?.estimatedTimeText 
+        estimatedTimeTextDisplay: vendorInfo?.estimatedTimeText,
+        vendorNameDisplay: vendorInfo?.dairyName || product.vendor?.dairyName
       });
       setAddedFeedback(prev => ({ ...prev, [product._id]: true }));
       setTimeout(() => {
@@ -918,6 +926,35 @@ const App = () => {
               <p className="text-xs text-gray-500 mt-2">
                 Type your area, village, or city name to find nearby dairy vendors
               </p>
+            </div>
+          )}
+
+          {/* Vendor Selection */}
+          {availableVendors.length >= 2 && (
+            <div className="bg-white border-2 border-blue-200 rounded-lg p-4 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                🏪 Choose a Dairy Vendor
+              </label>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setSelectedVendorId('all')}
+                  className={`px-5 py-2 rounded-full font-semibold transition ${selectedVendorId === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-blue-50'}`}
+                >
+                  All Vendors
+                </button>
+                {availableVendors.map(vendor => (
+                  <button
+                    key={vendor._id}
+                    onClick={() => setSelectedVendorId(vendor._id)}
+                    className={`px-5 py-2 rounded-full font-semibold transition flex items-center gap-2 ${selectedVendorId === vendor._id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-blue-50'}`}
+                  >
+                    🏪 {vendor.dairyName}
+                    <span className="text-xs opacity-80">
+                      ({vendor.distance} km · {vendor.estimatedTimeText})
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         
@@ -1286,6 +1323,36 @@ const App = () => {
                   </div>
                 )}
               </div>
+
+              {/* Visual Delivery Route */}
+              {order.vendor && order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                <div className="bg-white border-2 border-blue-100 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    🚴 Delivery Route
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <div className="text-center flex-1">
+                      <div className="text-4xl mb-1">🏪</div>
+                      <p className="text-sm font-semibold">{order.vendor.dairyName}</p>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center px-2">
+                      <div className="text-3xl animate-pulse">🚴</div>
+                      {(order.distance || order.estimatedMinutes) && (
+                        <p className="text-xs text-gray-500 mt-1 text-center">
+                          {order.distance ? `${order.distance} km` : ''}
+                          {order.distance && order.estimatedMinutes ? ' · ' : ''}
+                          {order.estimatedMinutes ? `${order.estimatedMinutes} min` : ''}
+                        </p>
+                      )}
+                      <div className="w-full border-t-2 border-dashed border-blue-300 mt-2"></div>
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-4xl mb-1">🏠</div>
+                      <p className="text-sm font-semibold">Your Home</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mb-8">
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
