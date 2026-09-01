@@ -12,49 +12,75 @@ connectDB();
 // Initialize express app
 const app = express();
 
-// CORS configuration
+// =========================
+// CORS CONFIGURATION
+// =========================
 const allowedOrigins = [
-  "http://localhost:3000",
-  "https://milko-bar-dairy-website-git-main-milko-dairy.vercel.app",
-  // /\.vercel\.app$/   // sab Vercel preview URLs allow karega
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://milko-bar-dairy-website-git-main-milko-dairy.vercel.app',
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.some(o => 
-        o instanceof RegExp ? o.test(origin) : o === origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin
+      // (Postman, mobile apps, server-to-server requests, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
 
-// Middleware
-app.use(cors(corsOptions));
+      // Allow exact origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow all Vercel preview/deployment URLs
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// =========================
+// MIDDLEWARE
+// =========================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files (uploaded images)
+// =========================
+// STATIC FILES
+// =========================
 app.use('/uploads', express.static('uploads'));
 
-// Import routes
+// =========================
+// IMPORT ROUTES
+// =========================
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 
-// API Routes
+// =========================
+// API ROUTES
+// =========================
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/vendors', vendorRoutes);
 
-// Root route
-app.get('/', (req, res) => {  
+// =========================
+// ROOT ROUTE
+// =========================
+app.get('/', (req, res) => {
   res.json({
     message: '🥛 Welcome to Milko Bar Dairy API',
     version: '1.0.0',
@@ -63,27 +89,41 @@ app.get('/', (req, res) => {
       products: '/api/products',
       orders: '/api/orders',
       reviews: '/api/reviews',
-      vendors: '/api/vendors'
-    }
+      vendors: '/api/vendors',
+    },
   });
 });
 
-// 404 handler
+// =========================
+// 404 HANDLER
+// =========================
 app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+  res.status(404).json({
+    message: 'Route not found',
+  });
 });
 
-// Error handler
+// =========================
+// ERROR HANDLER
+// =========================
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!', error: err.message });
+  console.error('❌ Server Error:', err);
+
+  res.status(500).json({
+    message: 'Something went wrong!',
+    error: err.message,
+  });
 });
 
-// Start server
+// =========================
+// START SERVER
+// =========================
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(
+    `🌍 Environment: ${process.env.NODE_ENV || 'development'}`
+  );
 });
