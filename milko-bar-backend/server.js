@@ -54,7 +54,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/vendors', vendorRoutes);
 
 // Root route
-app.get('/', (req, res) => {
+app.get('/', (req, res) => {  
   res.json({
     message: '🥛 Welcome to Milko Bar Dairy API',
     version: '1.0.0',
