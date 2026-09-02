@@ -282,114 +282,35 @@ const App = () => {
       console.error('Error loading user:', error);
       localStorage.removeItem('user');
     }
-
     fetchProducts();
-
-    const watchId = detectHeaderLocation();
-
-    // Stop GPS watcher when App unmounts
-    return () => {
-      if (watchId !== null && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
+    detectHeaderLocation();
   }, []);
 
   const detectHeaderLocation = () => {
-    if (!navigator.geolocation) {
-      console.error('❌ Geolocation is not supported by this browser.');
-      return null;
-    }
-
-    let lastLat = null;
-    let lastLng = null;
-
-    const updateLocationName = async (lat, lng) => {
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-          {
-            headers: {
-              Accept: 'application/json',
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Reverse geocoding failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const address = data.address || {};
-
-        const area =
-          address.village ||
-          address.town ||
-          address.suburb ||
-          address.neighbourhood ||
-          address.city_district ||
-          address.municipality ||
-          '';
-
-        const city =
-          address.city ||
-          address.county ||
-          address.state_district ||
-          '';
-
-        const name =
-          [area, city].filter(Boolean).join(', ') ||
-          data.display_name ||
-          'Location detected';
-
-        setUserLocationName(name);
-      } catch (error) {
-        console.error('❌ Reverse geocoding error:', error);
-      }
-    };
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const accuracy = position.coords.accuracy;
-
-        console.log('📍 LIVE LOCATION:', {
-          latitude: lat,
-          longitude: lng,
-          accuracy: `${Math.round(accuracy)} meters`,
-        });
-
         setUserCoords({ lat, lng });
-
-        // Reverse geocode only after first fix or meaningful movement
-        const movedEnough =
-          lastLat === null ||
-          lastLng === null ||
-          Math.abs(lat - lastLat) > 0.0005 ||
-          Math.abs(lng - lastLng) > 0.0005;
-
-        if (movedEnough) {
-          lastLat = lat;
-          lastLng = lng;
-          updateLocationName(lat, lng);
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+          );
+          const data = await response.json();
+          const address = data.address || {};
+          const area = address.village || address.town || address.suburb || address.city_district || '';
+          const city = address.city || address.county || '';
+          const name = [area, city].filter(Boolean).join(', ') || 'Location detected';
+          setUserLocationName(name);
+        } catch (error) {
+          setUserLocationName('Location detected');
         }
       },
-      (error) => {
-        console.error('❌ LIVE LOCATION ERROR:', {
-          code: error.code,
-          message: error.message,
-        });
+      () => {
         setUserLocationName('');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0,
       }
     );
-
-    return watchId;
   };
 
   const fetchProducts = async (filters = {}) => {
@@ -821,14 +742,7 @@ const App = () => {
     const [availableVendors, setAvailableVendors] = useState([]);
 
     useEffect(() => {
-      const watchId = detectLocation();
-
-      // Stop GPS watcher when ProductsView unmounts
-      return () => {
-        if (watchId !== null && navigator.geolocation) {
-          navigator.geolocation.clearWatch(watchId);
-        }
-      };
+      detectLocation();
     }, []);
 
     const fetchNearbyForLocation = async (lat, lng) => {
@@ -858,68 +772,23 @@ const App = () => {
     const detectLocation = () => {
       if (!navigator.geolocation) {
         setLocationStatus('unsupported');
-        console.error('❌ Geolocation is not supported.');
-        return null;
+        return;
       }
 
       setLocationStatus('loading');
-
-      let lastLat = null;
-      let lastLng = null;
-      let requestInProgress = false;
-
-      const watchId = navigator.geolocation.watchPosition(
+      navigator.geolocation.getCurrentPosition(
         async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          const accuracy = position.coords.accuracy;
-
-          console.log('📍 PRODUCTS LIVE LOCATION:', {
-            latitude: lat,
-            longitude: lng,
-            accuracy: `${Math.round(accuracy)} meters`,
-          });
-
           setUserLocation({ lat, lng });
           setLocationStatus('success');
-
-          // Avoid repeated API requests for tiny GPS movements
-          const movedEnough =
-            lastLat === null ||
-            lastLng === null ||
-            Math.abs(lat - lastLat) > 0.0005 ||
-            Math.abs(lng - lastLng) > 0.0005;
-
-          if (movedEnough && !requestInProgress) {
-            lastLat = lat;
-            lastLng = lng;
-            requestInProgress = true;
-
-            try {
-              await fetchNearbyForLocation(lat, lng);
-            } finally {
-              requestInProgress = false;
-            }
-          }
+          await fetchNearbyForLocation(lat, lng);
         },
         (error) => {
-          console.error('❌ LIVE LOCATION ERROR:', {
-            code: error.code,
-            message: error.message,
-          });
-
-          setLocationStatus(
-            error.code === 1 ? 'denied' : 'error'
-          );
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 20000,
-          maximumAge: 0,
+          setLocationStatus('denied');
+          console.error('Location error:', error);
         }
       );
-
-      return watchId;
     };
 
     const searchManualAddress = async () => {

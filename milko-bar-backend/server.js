@@ -18,6 +18,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://milko-bar-dairy.netlify.app',
   'https://milko-bar-dairy-website-git-main-milko-dairy.vercel.app',
 ];
 
@@ -37,6 +38,11 @@ app.use(
 
       // Allow all Vercel preview/deployment URLs
       if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+
+      // Allow all Netlify preview/deployment URLs
+      if (origin.endsWith('.netlify.app')) {
         return callback(null, true);
       }
 
