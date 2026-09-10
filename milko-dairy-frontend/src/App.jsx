@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff } from 'lucide-react';
-import { authAPI, productsAPI, ordersAPI, vendorAPI } from './services/api';
+import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff, Truck } from 'lucide-react';
+import { authAPI, productsAPI, ordersAPI, vendorAPI, deliveryAPI } from './services/api';
 import AuthModal from './AuthModal';
 import VendorRegister from './VendorRegister';
 import VendorLogin from './VendorLogin';
 import VendorDashboard from './VendorDashboard';
+import DeliveryRegister from './DeliveryRegister';
+import DeliveryLogin from './DeliveryLogin';
+import DeliveryDashboard from './DeliveryDashboard';
+import LiveTrackingMap from './LiveTrackingMap';
 
 const CATEGORIES = ['All', 'Milk', 'Dahi', 'Paneer', 'Butter', 'Ghee', 'Lassi', 'Buttermilk', 'Ice Cream'];
 
@@ -493,6 +497,11 @@ const Header = ({
               🏪 Vendor Login
             </button>
           )}
+          {!currentUser && !currentVendor && (
+            <button onClick={() => setView('delivery-login')} className="hover:text-blue-200 transition flex items-center gap-2 text-sm">
+              🚴 Delivery Partner
+            </button>
+          )}
           {currentUser ? (
             <div className="flex items-center gap-3">
               <span className="text-sm">Hi, {currentUser.fullName || currentUser.firstName}</span>
@@ -524,6 +533,9 @@ const Header = ({
           )}
           {!currentUser && !currentVendor && (
             <button onClick={() => { setView('vendor-login'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">🏪 Vendor Login</button>
+          )}
+          {!currentUser && !currentVendor && (
+            <button onClick={() => { setView('delivery-login'); setShowMobileMenu(false); }} className="block w-full text-left hover:text-blue-200">🚴 Delivery Partner</button>
           )}
           {currentUser ? (
             <button onClick={handleLogout} className="block w-full text-left text-red-300 hover:text-red-200">Logout</button>
@@ -618,6 +630,17 @@ const HomeView = ({ currentUser, setShowAuth, setAuthMode, setView, setSelectedC
         <p className="text-lg mb-6 text-green-50">Sell your fresh dairy products online and grow your business!</p>
         <button onClick={() => setView('vendor-register')} className="bg-white text-green-600 px-8 py-4 rounded-full font-bold hover:bg-green-50 hover:scale-105 transition-all shadow-2xl">
           Become a Vendor →
+        </button>
+      </div>
+    </section>
+
+    <section className="py-16 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 relative overflow-hidden">
+      <div className="absolute top-0 right-0 text-9xl opacity-10">🚴</div>
+      <div className="container mx-auto px-4 text-center text-white relative z-10">
+        <h3 className="text-3xl md:text-4xl font-extrabold mb-4">🚴 Want to Deliver With Us?</h3>
+        <p className="text-lg mb-6 text-orange-50">Accept nearby orders and earn on your own schedule!</p>
+        <button onClick={() => setView('delivery-register')} className="bg-white text-orange-600 px-8 py-4 rounded-full font-bold hover:bg-orange-50 hover:scale-105 transition-all shadow-2xl">
+          Become a Delivery Partner →
         </button>
       </div>
     </section>
@@ -1025,6 +1048,28 @@ const OrdersView = ({ orders, setView }) => {
   };
 
   const OrderDetailModal = ({ order, onClose }) => {
+    const [liveTrackingData, setLiveTrackingData] = useState(null);
+    const canLiveTrack = order && order.deliveryBoy && order.status === 'In Transit';
+
+    useEffect(() => {
+      if (!canLiveTrack) {
+        setLiveTrackingData(null);
+        return;
+      }
+      const fetchTrack = async () => {
+        try {
+          const res = await deliveryAPI.trackOrder(order._id);
+          setLiveTrackingData(res.data);
+        } catch (error) {
+          console.error('Error fetching live tracking:', error);
+        }
+      };
+      fetchTrack();
+      const interval = setInterval(fetchTrack, 8000);
+      return () => clearInterval(interval);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canLiveTrack, order?._id]);
+
     if (!order) return null;
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1034,6 +1079,7 @@ const OrdersView = ({ orders, setView }) => {
               <div>
                 <h2 className="text-2xl font-bold">Order #{order._id.slice(-6)}</h2>
                 {order.vendor && <p className="text-blue-100 text-sm mb-1">🏪 {order.vendor.dairyName}</p>}
+                {order.deliveryBoy && <p className="text-blue-100 text-sm mb-1">🚴 {order.deliveryBoy.name} · {order.deliveryBoy.vehicleType}{order.deliveryBoy.vehicleNumber ? ` (${order.deliveryBoy.vehicleNumber})` : ''}</p>}
                 <p className="text-blue-100 mt-1">Placed on {formatTime(order.orderDate)}</p>
               </div>
               <button onClick={onClose} className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition"><X size={24} /></button>
@@ -1050,33 +1096,56 @@ const OrdersView = ({ orders, setView }) => {
                   <Calendar size={18} />{getTimeRemaining(order.estimatedDelivery)}
                 </div>
               )}
+              {order.deliveryBoy && (
+                <a
+                  href={`tel:${order.deliveryBoy.phone}`}
+                  className="px-4 py-2 bg-orange-50 text-orange-700 rounded-full font-semibold flex items-center gap-2"
+                >
+                  <Phone size={16} /> Call {order.deliveryBoy.name}
+                </a>
+              )}
             </div>
 
-            {order.vendor && order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+            {canLiveTrack && liveTrackingData ? (
               <div className="bg-white border-2 border-blue-100 rounded-lg p-6 mb-6">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🚴 Delivery Route</h3>
-                <div className="flex items-center justify-between">
-                  <div className="text-center flex-1">
-                    <div className="text-4xl mb-1">🏪</div>
-                    <p className="text-sm font-semibold">{order.vendor.dairyName}</p>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center px-2">
-                    <div className="text-3xl animate-pulse">🚴</div>
-                    {(order.distance || order.estimatedMinutes) && (
-                      <p className="text-xs text-gray-500 mt-1 text-center">
-                        {order.distance ? `${order.distance} km` : ''}
-                        {order.distance && order.estimatedMinutes ? ' · ' : ''}
-                        {order.estimatedMinutes ? `${order.estimatedMinutes} min` : ''}
-                      </p>
-                    )}
-                    <div className="w-full border-t-2 border-dashed border-blue-300 mt-2"></div>
-                  </div>
-                  <div className="text-center flex-1">
-                    <div className="text-4xl mb-1">🏠</div>
-                    <p className="text-sm font-semibold">Your Home</p>
-                  </div>
-                </div>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🚴 Live Tracking</h3>
+                <LiveTrackingMap
+                  pickup={liveTrackingData.pickup}
+                  drop={liveTrackingData.drop}
+                  deliveryBoyPosition={liveTrackingData.deliveryBoy}
+                />
+                <p className="text-xs text-gray-500 mt-2 text-center">Updates automatically every few seconds</p>
               </div>
+            ) : (
+              order.vendor && order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                <div className="bg-white border-2 border-blue-100 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🚴 Delivery Route</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="text-center flex-1">
+                      <div className="text-4xl mb-1">🏪</div>
+                      <p className="text-sm font-semibold">{order.vendor.dairyName}</p>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center px-2">
+                      <div className="text-3xl animate-pulse">🚴</div>
+                      {(order.distance || order.estimatedMinutes) && (
+                        <p className="text-xs text-gray-500 mt-1 text-center">
+                          {order.distance ? `${order.distance} km` : ''}
+                          {order.distance && order.estimatedMinutes ? ' · ' : ''}
+                          {order.estimatedMinutes ? `${order.estimatedMinutes} min` : ''}
+                        </p>
+                      )}
+                      <div className="w-full border-t-2 border-dashed border-blue-300 mt-2"></div>
+                    </div>
+                    <div className="text-center flex-1">
+                      <div className="text-4xl mb-1">🏠</div>
+                      <p className="text-sm font-semibold">Your Home</p>
+                    </div>
+                  </div>
+                  {!order.deliveryBoy && (
+                    <p className="text-xs text-gray-400 mt-3 text-center">Live tracking will appear once a delivery partner picks up your order.</p>
+                  )}
+                </div>
+              )
             )}
 
             <div className="mb-8">
@@ -1211,6 +1280,7 @@ const OrdersView = ({ orders, setView }) => {
 const App = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentVendor, setCurrentVendor] = useState(null);
+  const [currentDeliveryBoy, setCurrentDeliveryBoy] = useState(null);
   const [view, setView] = useState('home');
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
@@ -1241,6 +1311,10 @@ const App = () => {
       const storedVendor = vendorAPI.getStoredVendor();
       if (storedVendor) {
         setCurrentVendor(storedVendor);
+      }
+      const storedDeliveryBoy = deliveryAPI.getStoredDeliveryBoy();
+      if (storedDeliveryBoy) {
+        setCurrentDeliveryBoy(storedDeliveryBoy);
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -1372,6 +1446,17 @@ const App = () => {
     setView('home');
   };
 
+  const handleDeliveryLoginSuccess = (deliveryData) => {
+    setCurrentDeliveryBoy(deliveryData);
+    setView('delivery-dashboard');
+  };
+
+  const handleDeliveryLogout = () => {
+    deliveryAPI.logout();
+    setCurrentDeliveryBoy(null);
+    setView('home');
+  };
+
   const addToCart = (product) => {
     const existing = cart.find(item => item._id === product._id);
     if (existing) {
@@ -1426,6 +1511,12 @@ const App = () => {
         estimatedMinutes: cart[0]?.estimatedMinutes || null
       };
 
+      // Attach customer's live location so delivery boys can see distance/direction
+      if (userCoords && userCoords.lat && userCoords.lng) {
+        orderData.latitude = userCoords.lat;
+        orderData.longitude = userCoords.lng;
+      }
+
       const orderVendorName = cart[0]?.vendorNameDisplay || cart[0]?.vendor?.dairyName || null;
       const orderEstimatedTimeText = cart[0]?.estimatedTimeTextDisplay || null;
 
@@ -1476,6 +1567,24 @@ const App = () => {
 
   if (view === 'vendor-dashboard' && currentVendor) {
     return <VendorDashboard vendor={currentVendor} onLogout={handleVendorLogout} />;
+  }
+
+  if (view === 'delivery-register') {
+    return <DeliveryRegister onBackToHome={() => setView('home')} onSwitchToLogin={() => setView('delivery-login')} />;
+  }
+
+  if (view === 'delivery-login') {
+    return (
+      <DeliveryLogin
+        onLoginSuccess={handleDeliveryLoginSuccess}
+        onBackToHome={() => setView('home')}
+        onSwitchToRegister={() => setView('delivery-register')}
+      />
+    );
+  }
+
+  if (view === 'delivery-dashboard' && currentDeliveryBoy) {
+    return <DeliveryDashboard deliveryBoy={currentDeliveryBoy} onLogout={handleDeliveryLogout} />;
   }
 
   return (
