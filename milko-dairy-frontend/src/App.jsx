@@ -37,6 +37,7 @@ const AdminDashboard = ({ currentUser }) => {
   const [adminView, setAdminView] = useState('orders');
   const [allOrders, setAllOrders] = useState([]);
   const [allVendors, setAllVendors] = useState([]);
+  const [allDeliveryBoys, setAllDeliveryBoys] = useState([]);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -54,6 +55,9 @@ const AdminDashboard = ({ currentUser }) => {
     if (adminView === 'vendors') {
       fetchVendors();
     }
+    if (adminView === 'delivery') {
+      fetchDeliveryBoys();
+    }
   }, [adminView]);
 
   const fetchVendors = async () => {
@@ -62,6 +66,25 @@ const AdminDashboard = ({ currentUser }) => {
       setAllVendors(response.data || []);
     } catch (error) {
       console.error('Error fetching vendors:', error);
+    }
+  };
+
+  const fetchDeliveryBoys = async () => {
+    try {
+      const response = await deliveryAPI.getAllDeliveryBoys();
+      setAllDeliveryBoys(response.data || []);
+    } catch (error) {
+      console.error('Error fetching delivery boys:', error);
+    }
+  };
+
+  const handleDeliveryBoyStatusUpdate = async (deliveryBoyId, status) => {
+    try {
+      await deliveryAPI.updateDeliveryBoyStatus(deliveryBoyId, status);
+      fetchDeliveryBoys();
+      alert(`Delivery partner ${status} successfully!`);
+    } catch (error) {
+      alert('Failed to update delivery partner status');
     }
   };
 
@@ -100,6 +123,8 @@ const AdminDashboard = ({ currentUser }) => {
     return colors[status] || 'bg-gray-100 text-gray-700';
   };
 
+  const getDeliveryStatusColor = getVendorStatusColor; // same status set, same colors
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="flex space-x-4 mb-6">
@@ -108,6 +133,9 @@ const AdminDashboard = ({ currentUser }) => {
         </button>
         <button onClick={() => switchView('vendors')} className={`px-4 py-2 rounded ${adminView === 'vendors' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
           Vendors
+        </button>
+        <button onClick={() => switchView('delivery')} className={`px-4 py-2 rounded ${adminView === 'delivery' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
+          Delivery Partners
         </button>
       </div>
 
@@ -227,6 +255,76 @@ const AdminDashboard = ({ currentUser }) => {
                         )}
                         {vendor.status === 'suspended' && (
                           <button onClick={() => handleVendorStatusUpdate(vendor._id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">Reactivate</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {adminView === 'delivery' && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h3 className="text-2xl font-bold mb-6">Manage Delivery Partners</h3>
+          {allDeliveryBoys.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Truck size={64} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-xl">No delivery partner requests yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-4 py-3 text-left">Name</th>
+                    <th className="px-4 py-3 text-left">Contact</th>
+                    <th className="px-4 py-3 text-left">Vehicle</th>
+                    <th className="px-4 py-3 text-left">Area</th>
+                    <th className="px-4 py-3 text-left">Online?</th>
+                    <th className="px-4 py-3 text-left">Deliveries</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allDeliveryBoys.map(db => (
+                    <tr key={db._id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 font-semibold">{db.name}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm">{db.phone}</p>
+                        <p className="text-xs text-gray-500">{db.email}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm">{db.vehicleType}</p>
+                        {db.vehicleNumber && <p className="text-xs text-gray-500">{db.vehicleNumber}</p>}
+                      </td>
+                      <td className="px-4 py-3">{db.area}, {db.city}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${db.isOnline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {db.isOnline ? '🟢 Online' : '⚪ Offline'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">{db.totalDeliveries || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getDeliveryStatusColor(db.status)}`}>
+                          {db.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {db.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleDeliveryBoyStatusUpdate(db._id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">Approve</button>
+                            <button onClick={() => handleDeliveryBoyStatusUpdate(db._id, 'rejected')} className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">Reject</button>
+                          </div>
+                        )}
+                        {db.status === 'approved' && (
+                          <button onClick={() => handleDeliveryBoyStatusUpdate(db._id, 'suspended')} className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">Suspend</button>
+                        )}
+                        {db.status === 'suspended' && (
+                          <button onClick={() => handleDeliveryBoyStatusUpdate(db._id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">Reactivate</button>
                         )}
                       </td>
                     </tr>
