@@ -20,6 +20,16 @@ api.interceptors.request.use(
       if (vendorToken) {
         config.headers.Authorization = `Bearer ${vendorToken}`;
       }
+    } else if (config.url && config.url.startsWith('/delivery')) {
+      // Delivery routes: most need a delivery-boy token, but the shared
+      // /delivery/track/:orderId route can also be called by a logged-in
+      // customer - so prefer deliveryToken, fall back to the customer token.
+      const deliveryToken = localStorage.getItem('deliveryToken');
+      const customerToken = localStorage.getItem('token');
+      const tokenToUse = deliveryToken || customerToken;
+      if (tokenToUse) {
+        config.headers.Authorization = `Bearer ${tokenToUse}`;
+      }
     } else {
       const token = localStorage.getItem('token');
       if (token) {
@@ -84,14 +94,14 @@ export const authAPI = {
 export const productsAPI = {
   getAll: async (filters = {}) => {
     const { category, search, minPrice, maxPrice, sort } = filters;
-    
+
     let url = '/products?';
     if (category && category !== 'All') url += `category=${category}&`;
     if (search) url += `search=${search}&`;
     if (minPrice) url += `minPrice=${minPrice}&`;
     if (maxPrice) url += `maxPrice=${maxPrice}&`;
     if (sort) url += `sort=${sort}&`;
-    
+
     const response = await api.get(url);
     return response.data;
   },
@@ -255,6 +265,105 @@ export const vendorAPI = {
 
   getEarnings: async () => {
     const response = await api.get('/vendors/earnings');
+    return response.data;
+  },
+};
+
+// ========== DELIVERY BOY APIs ==========
+
+export const deliveryAPI = {
+  register: async (deliveryData) => {
+    const response = await api.post('/delivery/register', deliveryData);
+    if (response.data.token) {
+      localStorage.setItem('deliveryToken', response.data.token);
+      localStorage.setItem('deliveryBoy', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  login: async (credentials) => {
+    const response = await api.post('/delivery/login', credentials);
+    if (response.data.token) {
+      localStorage.setItem('deliveryToken', response.data.token);
+      localStorage.setItem('deliveryBoy', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  logout: () => {
+    localStorage.removeItem('deliveryToken');
+    localStorage.removeItem('deliveryBoy');
+  },
+
+  getStoredDeliveryBoy: () => {
+    const deliveryBoy = localStorage.getItem('deliveryBoy');
+    return deliveryBoy ? JSON.parse(deliveryBoy) : null;
+  },
+
+  getProfile: async () => {
+    const response = await api.get('/delivery/profile');
+    return response.data;
+  },
+
+  // "Go Online" / "Go Offline" toggle
+  toggleOnline: async () => {
+    const response = await api.put('/delivery/toggle-online');
+    return response.data;
+  },
+
+  // Send live GPS location (call this periodically, e.g. every 10-15s while online)
+  updateLocation: async (latitude, longitude) => {
+    const response = await api.put('/delivery/location', { latitude, longitude });
+    return response.data;
+  },
+
+  // Nearby unassigned orders the delivery boy can accept
+  getAvailableOrders: async () => {
+    const response = await api.get('/delivery/available-orders');
+    return response.data;
+  },
+
+  acceptOrder: async (orderId) => {
+    const response = await api.put(`/delivery/orders/${orderId}/accept`);
+    return response.data;
+  },
+
+  getMyDeliveries: async () => {
+    const response = await api.get('/delivery/my-deliveries');
+    return response.data;
+  },
+
+  updateDeliveryStatus: async (orderId, status) => {
+    const response = await api.put(`/delivery/orders/${orderId}/status`, { status });
+    return response.data;
+  },
+
+  getEarnings: async () => {
+    const response = await api.get('/delivery/earnings');
+    return response.data;
+  },
+
+  // Live tracking - pickup point, drop point, delivery boy's current location.
+  // Callable by either the customer who owns the order, or the assigned delivery boy.
+  trackOrder: async (orderId) => {
+    const response = await api.get(`/delivery/track/${orderId}`);
+    return response.data;
+  },
+
+  // ---- Admin ----
+  getAllDeliveryBoys: async () => {
+    const adminToken = localStorage.getItem('token');
+    const response = await api.get('/delivery', {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    return response.data;
+  },
+
+  updateDeliveryBoyStatus: async (id, status) => {
+    const adminToken = localStorage.getItem('token');
+    const response = await api.put(`/delivery/${id}/status`, { status }, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
     return response.data;
   },
 };

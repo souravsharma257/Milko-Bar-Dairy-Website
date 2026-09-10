@@ -447,6 +447,7 @@ module.exports = {
   acceptOrder,
   getMyDeliveries,
   updateDeliveryStatus,
+  trackOrder,
   getDeliveryEarnings,
   getAllDeliveryBoys,
   updateDeliveryBoyStatus
