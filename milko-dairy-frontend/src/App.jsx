@@ -1113,8 +1113,27 @@ const CartView = ({ cart, updateCartQuantity, removeFromCart, cartTotal, placeOr
 // =====================================================================
 // OrdersView - module-level
 // =====================================================================
-const OrdersView = ({ orders, setView }) => {
+const OrdersView = ({ orders, setView, fetchMyOrders }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Auto-refresh order list every 15s so status/delivery-boy updates show
+  // up live, without the customer needing to manually refresh (Swiggy-style)
+  useEffect(() => {
+    if (!fetchMyOrders) return;
+    const interval = setInterval(fetchMyOrders, 15000);
+    return () => clearInterval(interval);
+  }, [fetchMyOrders]);
+
+  // Keep an open Track Order modal's data fresh when the list refreshes
+  useEffect(() => {
+    if (!selectedOrder || !Array.isArray(orders)) return;
+    const updated = orders.find(o => o._id === selectedOrder._id);
+    if (updated && updated !== selectedOrder) {
+      setSelectedOrder(updated);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders]);
+
   if (!Array.isArray(orders)) {
     return <div>Loading orders...</div>;
   }
@@ -1194,15 +1213,33 @@ const OrdersView = ({ orders, setView }) => {
                   <Calendar size={18} />{getTimeRemaining(order.estimatedDelivery)}
                 </div>
               )}
-              {order.deliveryBoy && (
-                <a
-                  href={`tel:${order.deliveryBoy.phone}`}
-                  className="px-4 py-2 bg-orange-50 text-orange-700 rounded-full font-semibold flex items-center gap-2"
-                >
-                  <Phone size={16} /> Call {order.deliveryBoy.name}
-                </a>
-              )}
             </div>
+
+            {order.deliveryBoy && (
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-5 mb-6">
+                <h3 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">🚴 Your Delivery Partner</h3>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <p className="text-lg font-bold text-gray-800">{order.deliveryBoy.name}</p>
+                    <p className="text-sm text-gray-600">
+                      {order.deliveryBoy.vehicleType}{order.deliveryBoy.vehicleNumber ? ` · ${order.deliveryBoy.vehicleNumber}` : ''}
+                    </p>
+                    <p className="text-sm text-gray-600">📞 {order.deliveryBoy.phone}</p>
+                  </div>
+                  <a
+                    href={`tel:${order.deliveryBoy.phone}`}
+                    className="px-5 py-2 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition flex items-center gap-2"
+                  >
+                    <Phone size={16} /> Call Now
+                  </a>
+                </div>
+                {canLiveTrack && liveTrackingData?.deliveryBoy && (
+                  <p className="text-xs text-orange-700 mt-3">
+                    📍 Currently on the way — live location shown below
+                  </p>
+                )}
+              </div>
+            )}
 
             {canLiveTrack && liveTrackingData ? (
               <div className="bg-white border-2 border-blue-100 rounded-lg p-6 mb-6">
@@ -1350,6 +1387,18 @@ const OrdersView = ({ orders, setView }) => {
                     </div>
                     <p className="text-sm text-gray-600">{order.items.length} item{order.items.length > 1 ? 's' : ''}</p>
                   </div>
+
+                  {order.deliveryBoy && order.status === 'In Transit' && (
+                    <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                      </span>
+                      <p className="text-sm text-orange-800 font-medium">
+                        🚴 {order.deliveryBoy.name} is on the way — tap Track Order for live location
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap justify-between items-center pt-4 border-t">
                     <div>
@@ -1759,7 +1808,7 @@ const App = () => {
       )}
 
       {view === 'orders' && (
-        <OrdersView orders={orders} setView={setView} />
+        <OrdersView orders={orders} setView={setView} fetchMyOrders={fetchMyOrders} />
       )}
 
       {view === 'admin-dashboard' && (
