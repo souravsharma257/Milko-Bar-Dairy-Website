@@ -6,7 +6,7 @@ const Product = require('../models/Product');
 // @access  Private
 const createOrder = async (req, res) => {
   try {
-    const { items, total, paymentMethod, userName, userPhone, userAddress, estimatedMinutes } = req.body;
+    const { items, total, paymentMethod, userName, userPhone, userAddress, estimatedMinutes, latitude, longitude } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No order items' });
@@ -20,8 +20,8 @@ const createOrder = async (req, res) => {
         return res.status(404).json({ message: `Product ${item.name} not found` });
       }
       if (product.stock < item.quantity) {
-        return res.status(400).json({ 
-          message: `Insufficient stock for ${product.name}. Available: ${product.stock}` 
+        return res.status(400).json({
+          message: `Insufficient stock for ${product.name}. Available: ${product.stock}`
         });
       }
       // Get vendor from first product that has one
@@ -51,6 +51,15 @@ const createOrder = async (req, res) => {
     // Attach vendor if found
     if (orderVendor) {
       orderData.vendor = orderVendor;
+    }
+
+    // Save customer's live GPS location for this order - used by delivery
+    // boys to see distance/direction to the drop-off point
+    if (latitude && longitude) {
+      orderData.deliveryLocation = {
+        type: 'Point',
+        coordinates: [parseFloat(longitude), parseFloat(latitude)]
+      };
     }
 
     // Set dynamic estimated delivery based on actual distance/time
@@ -86,6 +95,7 @@ const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
       .populate('vendor', 'dairyName phone whatsapp area city')
+      .populate('deliveryBoy', 'name phone vehicleType vehicleNumber')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -105,6 +115,7 @@ const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find({})
       .populate('user', 'firstName lastName email phone')
+      .populate('deliveryBoy', 'name phone vehicleType')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -153,9 +164,9 @@ const updateOrderStatus = async (req, res) => {
         timestamp: new Date(),
         note: note || `Order status updated to ${status}`
       });
-      
+
       order.status = status;
-      
+
       if (status === 'Confirmed') {
         const now = new Date();
         order.estimatedDelivery = new Date(now.getTime() + (2 * 60 * 60 * 1000));
@@ -166,7 +177,7 @@ const updateOrderStatus = async (req, res) => {
         const now = new Date();
         order.estimatedDelivery = new Date(now.getTime() + (30 * 60 * 1000));
       }
-      
+
       const updatedOrder = await order.save();
 
       res.json({

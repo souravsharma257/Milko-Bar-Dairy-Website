@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
+
 // Load environment variables
 dotenv.config();
 
@@ -73,6 +74,7 @@ const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
 
 // =========================
 // API ROUTES
@@ -82,6 +84,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/vendors', vendorRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // =========================
 // ROOT ROUTE

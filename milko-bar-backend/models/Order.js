@@ -19,6 +19,23 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+
+  // ===== Delivery Boy Assignment (Zepto/Blinkit style) =====
+  deliveryBoy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryBoy',
+    default: null
+  },
+  deliveryBoyAcceptedAt: {
+    type: Date,
+    default: null
+  },
+  deliveryEarning: {
+    type: Number,
+    default: 0
+  },
+  // ===========================================================
+
   userName: {
     type: String,
     required: true
@@ -30,6 +47,19 @@ const orderSchema = new mongoose.Schema({
   userAddress: {
     type: String,
     required: true
+  },
+  // Live GPS coordinates of the customer at order time - needed so delivery
+  // boys can see distance/direction to the drop-off point
+  deliveryLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    }
   },
   items: [{
     product: {
@@ -93,7 +123,7 @@ const orderSchema = new mongoose.Schema({
   }],
   estimatedDelivery: {
     type: Date,
-    default: function() {
+    default: function () {
       // Default: 2 hours from now
       const now = new Date();
       return new Date(now.getTime() + (2 * 60 * 60 * 1000));
@@ -109,5 +139,7 @@ const orderSchema = new mongoose.Schema({
 
 // Index for faster queries
 orderSchema.index({ user: 1, status: 1 });
+orderSchema.index({ deliveryBoy: 1 });
+orderSchema.index({ deliveryLocation: '2dsphere' });
 
 module.exports = mongoose.model('Order', orderSchema);
