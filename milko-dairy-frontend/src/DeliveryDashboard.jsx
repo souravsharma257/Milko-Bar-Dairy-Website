@@ -1,7 +1,33 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Truck, LogOut, Package, MapPin, Phone, Navigation, DollarSign, RefreshCw } from 'lucide-react';
+import { Truck, LogOut, Package, MapPin, Phone, Navigation, DollarSign, RefreshCw, Clock } from 'lucide-react';
 import { deliveryAPI } from './services/api';
 import LiveTrackingMap from './LiveTrackingMap';
+
+// Shows order-placed time clearly (Today/Yesterday/date), so orders never
+// feel "mixed up" when several are queued at once
+const formatOrderTime = (date) => {
+  const d = new Date(date);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const timePart = d.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Today, ${timePart}`;
+  if (isYesterday) return `Yesterday, ${timePart}`;
+  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+// "5 min ago" style - helps delivery boy spot the oldest waiting order at a glance
+const timeAgo = (date) => {
+  const diffMs = new Date() - new Date(date);
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+};
 
 const DeliveryDashboard = ({ deliveryBoy, onLogout }) => {
   const [profile, setProfile] = useState(deliveryBoy);
@@ -241,6 +267,9 @@ const DeliveryDashboard = ({ deliveryBoy, onLogout }) => {
                       <div>
                         <p className="font-bold">Order #{order._id.slice(-6)}</p>
                         {order.vendor && <p className="text-sm text-green-600">🏪 {order.vendor.dairyName}</p>}
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <Clock size={12} /> {formatOrderTime(order.orderDate)} · {timeAgo(order.orderDate)}
+                        </p>
                       </div>
                       {order.distanceFromMe !== null && (
                         <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
@@ -295,6 +324,12 @@ const DeliveryDashboard = ({ deliveryBoy, onLogout }) => {
                   <div>
                     <p className="font-bold">Order #{order._id.slice(-6)}</p>
                     {order.vendor && <p className="text-sm text-green-600">🏪 {order.vendor.dairyName}</p>}
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                      <Clock size={12} /> Placed {formatOrderTime(order.orderDate)}
+                    </p>
+                    {order.deliveryBoyAcceptedAt && (
+                      <p className="text-xs text-gray-500">Accepted {formatOrderTime(order.deliveryBoyAcceptedAt)}</p>
+                    )}
                   </div>
                   <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold">{order.status}</span>
                 </div>

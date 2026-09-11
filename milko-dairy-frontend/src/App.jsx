@@ -1151,7 +1151,19 @@ const OrdersView = ({ orders, setView, fetchMyOrders }) => {
     'Pending': '⏳', 'Confirmed': '✅', 'Processing': '📦', 'In Transit': '🚚', 'Delivered': '🎉', 'Cancelled': '❌'
   }[status] || '📋');
 
-  const formatTime = (date) => new Date(date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const formatTime = (date) => {
+    const d = new Date(date);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+
+    const timePart = d.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `Today, ${timePart}`;
+    if (isYesterday) return `Yesterday, ${timePart}`;
+    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   const getTimeRemaining = (estimatedDelivery) => {
     if (!estimatedDelivery) return 'Calculating...';
@@ -1372,7 +1384,9 @@ const OrdersView = ({ orders, setView, fetchMyOrders }) => {
                     <div>
                       <h3 className="font-bold text-xl mb-1">Order #{order._id.slice(-6)}</h3>
                       {order.vendor && <p className="text-sm text-green-600 font-medium mb-1">🏪 {order.vendor.dairyName}</p>}
-                      <p className="text-sm text-gray-600">{formatTime(order.orderDate)}</p>
+                      <p className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                        <Calendar size={14} className="text-gray-400" /> {formatTime(order.orderDate)}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-3 items-center">
                       <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 ${getStatusColor(order.status)}`}>

@@ -1,6 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Package, ShoppingBag, DollarSign, LogOut, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Package, ShoppingBag, DollarSign, LogOut, Plus, Edit2, Trash2, X, Clock } from 'lucide-react';
 import { vendorAPI } from './services/api';
+
+// Shows order-placed time clearly (Today/Yesterday/date), so orders never
+// feel "mixed up" when several come in
+const formatOrderTime = (date) => {
+  const d = new Date(date);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const timePart = d.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Today, ${timePart}`;
+  if (isYesterday) return `Yesterday, ${timePart}`;
+  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+// "5 min ago" style - helps the vendor spot the oldest waiting order at a glance
+const timeAgo = (date) => {
+  const diffMs = new Date() - new Date(date);
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+};
 
 const VendorDashboard = ({ vendor, onLogout }) => {
   const [activeTab, setActiveTab] = useState('products');
@@ -21,6 +47,15 @@ const VendorDashboard = ({ vendor, onLogout }) => {
     if (activeTab === 'products') fetchProducts();
     if (activeTab === 'orders') fetchOrders();
     if (activeTab === 'earnings') fetchEarnings();
+  }, [activeTab]);
+
+  // Auto-refresh the Orders tab every 15s so new orders show up live,
+  // without the vendor needing to switch tabs to refresh
+  useEffect(() => {
+    if (activeTab !== 'orders') return;
+    const interval = setInterval(fetchOrders, 15000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const fetchProducts = async () => {
@@ -195,7 +230,12 @@ const VendorDashboard = ({ vendor, onLogout }) => {
         {/* Orders Tab */}
         {activeTab === 'orders' && (
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-xl font-bold mb-6">My Orders</h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">My Orders</h3>
+              <button onClick={fetchOrders} className="text-sm text-gray-600 hover:text-gray-800">
+                🔄 Refresh
+              </button>
+            </div>
             {orders.length === 0 ? (
               <p className="text-center text-gray-500 py-12">No orders yet</p>
             ) : (
@@ -206,6 +246,12 @@ const VendorDashboard = ({ vendor, onLogout }) => {
                       <div>
                         <p className="font-bold">Order #{o._id.slice(-6)}</p>
                         <p className="text-sm text-gray-600">{o.userName} - {o.userPhone}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                          <Clock size={12} /> {formatOrderTime(o.orderDate)} · {timeAgo(o.orderDate)}
+                        </p>
+                        {o.deliveryBoy && (
+                          <p className="text-xs text-orange-600 mt-1">🚴 {o.deliveryBoy.name} · {o.deliveryBoy.phone}</p>
+                        )}
                       </div>
                       <select
                         value={o.status}
