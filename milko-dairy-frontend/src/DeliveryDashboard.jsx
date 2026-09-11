@@ -248,8 +248,24 @@ const DeliveryDashboard = ({ deliveryBoy, onLogout }) => {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mb-1"><MapPin size={14} className="inline mr-1" />{order.userAddress}</p>
-                    <p className="text-sm text-gray-600 mb-3">{order.items.length} item{order.items.length > 1 ? 's' : ''} · ₹{order.total} · {order.paymentMethod}</p>
+
+                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                      <p className="text-sm font-semibold text-gray-800">{order.userName}</p>
+                      <p className="text-xs text-gray-600">📞 {order.userPhone}</p>
+                      {order.user?.email && <p className="text-xs text-gray-600">✉️ {order.user.email}</p>}
+                      <p className="text-xs text-gray-600 mt-1"><MapPin size={12} className="inline mr-1" />{order.userAddress}</p>
+                    </div>
+
+                    <div className="mb-3">
+                      {order.items.map((item, idx) => (
+                        <p key={idx} className="text-sm text-gray-700">
+                          {item.image} {item.name} ({item.unit}) × {item.quantity}
+                        </p>
+                      ))}
+                    </div>
+
+                    <p className="text-sm text-gray-600 mb-3">₹{order.total} · {order.paymentMethod}</p>
+
                     <button
                       onClick={() => handleAccept(order._id)}
                       disabled={loading}
@@ -282,9 +298,23 @@ const DeliveryDashboard = ({ deliveryBoy, onLogout }) => {
                   </div>
                   <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold">{order.status}</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-1"><MapPin size={14} className="inline mr-1" />{order.userAddress}</p>
-                <p className="text-sm text-gray-600 mb-1"><Phone size={14} className="inline mr-1" />{order.userPhone}</p>
-                <p className="text-sm text-gray-600 mb-3">{order.items.length} item{order.items.length > 1 ? 's' : ''} · ₹{order.total} · {order.paymentMethod}</p>
+
+                <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                  <p className="text-sm font-semibold text-gray-800">{order.userName}</p>
+                  <p className="text-xs text-gray-600"><Phone size={12} className="inline mr-1" />{order.userPhone}</p>
+                  {order.user?.email && <p className="text-xs text-gray-600">✉️ {order.user.email}</p>}
+                  <p className="text-xs text-gray-600 mt-1"><MapPin size={12} className="inline mr-1" />{order.userAddress}</p>
+                </div>
+
+                <div className="mb-3">
+                  {order.items.map((item, idx) => (
+                    <p key={idx} className="text-sm text-gray-700">
+                      {item.image} {item.name} ({item.unit}) × {item.quantity}
+                    </p>
+                  ))}
+                </div>
+
+                <p className="text-sm text-gray-600 mb-3">₹{order.total} · {order.paymentMethod}</p>
 
                 <div className="flex gap-2 mb-3">
                   <button

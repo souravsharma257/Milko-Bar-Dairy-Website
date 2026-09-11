@@ -1225,6 +1225,10 @@ const OrdersView = ({ orders, setView, fetchMyOrders }) => {
                       {order.deliveryBoy.vehicleType}{order.deliveryBoy.vehicleNumber ? ` · ${order.deliveryBoy.vehicleNumber}` : ''}
                     </p>
                     <p className="text-sm text-gray-600">📞 {order.deliveryBoy.phone}</p>
+                    {order.deliveryBoy.email && <p className="text-sm text-gray-600">✉️ {order.deliveryBoy.email}</p>}
+                    {order.deliveryBoyAcceptedAt && (
+                      <p className="text-xs text-gray-500 mt-1">Picked up your order at {formatTime(order.deliveryBoyAcceptedAt)}</p>
+                    )}
                   </div>
                   <a
                     href={`tel:${order.deliveryBoy.phone}`}
