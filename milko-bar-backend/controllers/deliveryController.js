@@ -170,10 +170,14 @@ const getAvailableOrders = async (req, res) => {
       return res.json({ success: true, count: 0, data: [], message: 'Go online to see available orders' });
     }
 
-    // Only orders that are placed but not yet picked up by anyone, and not delivered/cancelled
+    // Only orders that are placed but not yet picked up by anyone, not
+    // delivered/cancelled, AND placed within the last 24 hours - so old
+    // stale/leftover orders never clutter the available-orders list
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const unassignedOrders = await Order.find({
       deliveryBoy: null,
-      status: { $in: ['Pending', 'Confirmed', 'Processing'] }
+      status: { $in: ['Pending', 'Confirmed', 'Processing'] },
+      orderDate: { $gte: twentyFourHoursAgo }
     })
       .populate('vendor', 'dairyName phone area city location')
       .populate('user', 'firstName lastName email phone')
