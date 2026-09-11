@@ -202,14 +202,11 @@ const getAvailableOrders = async (req, res) => {
       return orderObj;
     });
 
-    // Filter to service radius if we know both locations
-    if (hasMyLocation) {
-      ordersWithDistance = ordersWithDistance.filter(
-        o => o.distanceFromMe === null || o.distanceFromMe <= deliveryBoy.serviceRadius
-      );
-    }
-
-    // Nearest first
+    // Show ALL unassigned recent orders — never hide any, just sort
+    // nearest-first. (A hard radius cutoff was removed: in small-town/
+    // village coverage areas, delivery partners and customers can
+    // legitimately be tens of km apart, and hiding those orders made
+    // them silently disappear instead of letting the partner decide.)
     ordersWithDistance.sort((a, b) => {
       if (a.distanceFromMe === null) return 1;
       if (b.distanceFromMe === null) return -1;
