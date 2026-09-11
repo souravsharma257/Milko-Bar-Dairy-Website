@@ -959,8 +959,8 @@ const HomeView = ({ currentUser, setShowAuth, setAuthMode, setView, setSelectedC
               <p className="text-sm font-extrabold">Contact us</p>
               <div className="mt-4 space-y-4 text-sm text-gray-400">
                 <p className="flex items-center gap-3"><Phone size={16} /> +91 9358634955</p>
-                <p className="flex items-center gap-3"><Mail size={16} /> info@milkobardairy.com</p>
-                <p className="flex items-center gap-3"><MapPin size={16} /> Shahjahanpur, Rajasthan</p>
+                <p className="flex items-center gap-3"><Mail size={16} /> milkobardairy@gmail.com</p>
+                <p className="flex items-center gap-3"><MapPin size={16} /> Nimrana, Rajasthan</p>
               </div>
             </div>
           </div>
