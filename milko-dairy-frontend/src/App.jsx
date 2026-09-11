@@ -180,6 +180,7 @@ const AdminDashboard = ({ currentUser }) => {
                           <option value="Pending">⏳ Pending</option>
                           <option value="In Transit">🚚 In Transit</option>
                           <option value="Delivered">🎉 Delivered</option>
+                          <option value="Cancelled">❌ Cancelled</option>
                         </select>
                       </td>
                       <td className="px-4 py-3">
