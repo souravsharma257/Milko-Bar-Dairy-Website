@@ -176,6 +176,7 @@ const getAvailableOrders = async (req, res) => {
       status: { $in: ['Pending', 'Confirmed', 'Processing'] }
     })
       .populate('vendor', 'dairyName phone area city location')
+      .populate('user', 'firstName lastName email phone')
       .sort({ createdAt: -1 });
 
     const [myLng, myLat] = deliveryBoy.location.coordinates;
@@ -263,6 +264,7 @@ const getMyDeliveries = async (req, res) => {
   try {
     const orders = await Order.find({ deliveryBoy: req.deliveryBoy._id })
       .populate('vendor', 'dairyName phone area city')
+      .populate('user', 'firstName lastName email phone')
       .sort({ createdAt: -1 });
 
     res.json({ success: true, count: orders.length, data: orders });

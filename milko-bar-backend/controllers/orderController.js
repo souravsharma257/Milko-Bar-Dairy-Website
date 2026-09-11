@@ -95,7 +95,7 @@ const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
       .populate('vendor', 'dairyName phone whatsapp area city')
-      .populate('deliveryBoy', 'name phone vehicleType vehicleNumber')
+      .populate('deliveryBoy', 'name phone email vehicleType vehicleNumber')
       .sort({ createdAt: -1 });
 
     res.json({
