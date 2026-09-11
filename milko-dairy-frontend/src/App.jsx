@@ -1179,7 +1179,7 @@ const OrdersView = ({ orders, setView, fetchMyOrders }) => {
 
   const OrderDetailModal = ({ order, onClose }) => {
     const [liveTrackingData, setLiveTrackingData] = useState(null);
-    const canLiveTrack = order && order.deliveryBoy && order.status === 'In Transit';
+    const canLiveTrack = order && order.deliveryBoy && order.status !== 'Delivered' && order.status !== 'Cancelled';
 
     useEffect(() => {
       if (!canLiveTrack) {
@@ -1252,7 +1252,7 @@ const OrdersView = ({ orders, setView, fetchMyOrders }) => {
                 </div>
                 {canLiveTrack && liveTrackingData?.deliveryBoy && (
                   <p className="text-xs text-orange-700 mt-3">
-                    📍 Currently on the way — live location shown below
+                    📍 {order.status === 'In Transit' ? 'Currently on the way — live location shown below' : 'Heading to pick up your order — live location shown below'}
                   </p>
                 )}
               </div>
