@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff, Truck } from 'lucide-react';
-import { authAPI, productsAPI, ordersAPI, vendorAPI, deliveryAPI } from './services/api';
+import api, { authAPI, productsAPI, ordersAPI, vendorAPI, deliveryAPI } from './services/api';
 import AuthModal from './AuthModal';
 import VendorRegister from './VendorRegister';
 import VendorLogin from './VendorLogin';
@@ -754,6 +754,119 @@ const HomeView = ({ currentUser, setShowAuth, setAuthMode, setView, setSelectedC
 };
 
 // =====================================================================
+// Product Reviews UI
+// =====================================================================
+const renderStars = (rating, size = 'text-sm') => {
+  const value = Number(rating) || 0;
+  return (
+    <span className={`inline-flex items-center ${size} leading-none`} aria-label={`${value.toFixed(1)} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map(star => (
+        <span key={star} className={star <= Math.round(value) ? 'text-amber-400' : 'text-gray-300'}>★</span>
+      ))}
+    </span>
+  );
+};
+
+const ProductReviewsModal = ({ product, reviews, averageRating, totalReviews, loading, error, onClose }) => {
+  if (!product) return null;
+
+  const getReviewerName = (review) => {
+    const user = review?.user;
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+    return name || user?.name || review?.reviewer || 'Verified customer';
+  };
+
+  const getReviewDate = (review) => {
+    const date = review?.createdAt || review?.date || review?.reviewDate;
+    if (!date) return '';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-2xl max-h-[90vh] rounded-[28px] shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-5 sm:px-7 py-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-[#1769e0]">Customer reviews</p>
+            <h2 className="text-xl sm:text-2xl font-black text-gray-950 mt-1">{product.name}</h2>
+            <p className="text-sm text-gray-500 mt-1">What customers say about this product</p>
+          </div>
+          <button onClick={onClose} className="shrink-0 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition" aria-label="Close reviews">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-5 sm:p-7">
+          {loading ? (
+            <div className="py-16 text-center">
+              <div className="w-10 h-10 border-4 border-blue-100 border-t-[#1769e0] rounded-full animate-spin mx-auto" />
+              <p className="mt-4 text-sm font-semibold text-gray-500">Loading reviews...</p>
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center">
+              <div className="text-4xl">⚠️</div>
+              <p className="mt-3 font-bold text-gray-800">Could not load reviews</p>
+              <p className="text-sm text-gray-500 mt-1">Please try again in a moment.</p>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-3xl bg-gradient-to-br from-blue-50 to-green-50 border border-blue-100 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+                <div className="text-center sm:text-left">
+                  <div className="text-4xl sm:text-5xl font-black text-gray-950">{Number(averageRating || 0).toFixed(1)}</div>
+                  <div className="mt-1">{renderStars(averageRating, 'text-lg')}</div>
+                  <div className="text-xs text-gray-500 font-semibold mt-1">{totalReviews} {totalReviews === 1 ? 'review' : 'reviews'}</div>
+                </div>
+                <div className="hidden sm:block h-16 w-px bg-gray-200" />
+                <div>
+                  <p className="font-extrabold text-gray-900">Overall rating</p>
+                  <p className="text-sm text-gray-500 mt-1">Ratings and feedback shared by Milko Bar customers.</p>
+                </div>
+              </div>
+
+              {reviews.length === 0 ? (
+                <div className="py-14 text-center">
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center text-3xl">💬</div>
+                  <h3 className="font-black text-gray-900 mt-4">No reviews yet</h3>
+                  <p className="text-sm text-gray-500 mt-1">Be the first customer to review this product.</p>
+                </div>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  {reviews.map((review) => (
+                    <article key={review._id || `${review.user?._id}-${review.createdAt}`} className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center font-black text-[#1769e0] shrink-0">
+                            {getReviewerName(review).charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-gray-900 truncate">{getReviewerName(review)}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {renderStars(review.rating)}
+                              {getReviewDate(review) && <span className="text-xs text-gray-400">{getReviewDate(review)}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-full">Customer</span>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-6 mt-4">{review.comment}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =====================================================================
 // ProductsView - module-level. Location comes from App via props;
 // this fixes both the remount-loop AND lets the map picker drive it.
 // =====================================================================
@@ -773,6 +886,64 @@ const ProductsView = ({
   const [vendorDistances, setVendorDistances] = useState({});
   const [selectedVendorId, setSelectedVendorId] = useState('all');
   const [availableVendors, setAvailableVendors] = useState([]);
+  const [reviewSummaries, setReviewSummaries] = useState({});
+  const [selectedReviewProduct, setSelectedReviewProduct] = useState(null);
+  const [selectedReviews, setSelectedReviews] = useState([]);
+  const [selectedAverageRating, setSelectedAverageRating] = useState(0);
+  const [selectedTotalReviews, setSelectedTotalReviews] = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
+
+  const fetchReviewSummaries = async (products) => {
+    const list = Array.isArray(products) ? products : [];
+    if (!list.length) {
+      setReviewSummaries({});
+      return;
+    }
+
+    const results = await Promise.all(list.map(async (product) => {
+      try {
+        const response = await api.get(`/reviews/product/${product._id}`);
+        const payload = response?.data || response || {};
+        const reviews = Array.isArray(payload.data) ? payload.data : [];
+        const totalReviews = Number(payload.totalReviews ?? reviews.length ?? 0);
+        const averageRating = Number(payload.averageRating ?? (reviews.length ? reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length : 0));
+        return [product._id, { averageRating, totalReviews }];
+      } catch (error) {
+        console.error(`Failed to fetch reviews for ${product.name}:`, error);
+        return [product._id, { averageRating: 0, totalReviews: 0 }];
+      }
+    }));
+
+    setReviewSummaries(Object.fromEntries(results));
+  };
+
+  const openReviews = async (product) => {
+    setSelectedReviewProduct(product);
+    setSelectedReviews([]);
+    setSelectedAverageRating(0);
+    setSelectedTotalReviews(0);
+    setReviewsError('');
+    setReviewsLoading(true);
+
+    try {
+      const response = await api.get(`/reviews/product/${product._id}`);
+      const payload = response?.data || response || {};
+      const reviews = Array.isArray(payload.data) ? payload.data : [];
+      const averageRating = Number(payload.averageRating ?? (reviews.length ? reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / reviews.length : 0));
+      const totalReviews = Number(payload.totalReviews ?? reviews.length);
+
+      setSelectedReviews(reviews);
+      setSelectedAverageRating(averageRating);
+      setSelectedTotalReviews(totalReviews);
+      setReviewSummaries(prev => ({ ...prev, [product._id]: { averageRating, totalReviews } }));
+    } catch (error) {
+      console.error('Error fetching product reviews:', error);
+      setReviewsError(error.response?.data?.message || 'Unable to load reviews');
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
   const fetchNearbyForLocation = async (lat, lng) => {
     try {
@@ -806,9 +977,7 @@ const ProductsView = ({
     }
   }, [userCoords]);
 
-  if (!filteredProducts || !Array.isArray(filteredProducts)) {
-    return <div>Loading...</div>;
-  }
+  const safeFilteredProducts = Array.isArray(filteredProducts) ? filteredProducts : [];
 
   const applyFilters = async () => {
     await fetchProducts({ category: selectedCategory, search: searchTerm, minPrice, maxPrice, sort: sortBy });
@@ -841,12 +1010,17 @@ const ProductsView = ({
   const cartQuantity = (productId) => cart.find(item => item._id === productId)?.quantity || 0;
 
   let displayProducts = nearbyVendorIds
-    ? filteredProducts.filter(p => !p.vendor || nearbyVendorIds.includes(p.vendor._id || p.vendor))
-    : filteredProducts;
+    ? safeFilteredProducts.filter(p => !p.vendor || nearbyVendorIds.includes(p.vendor._id || p.vendor))
+    : safeFilteredProducts;
 
   if (selectedVendorId !== 'all') {
     displayProducts = displayProducts.filter(p => (p.vendor?._id || p.vendor) === selectedVendorId);
   }
+
+  useEffect(() => {
+    fetchReviewSummaries(displayProducts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayProducts.map(p => p._id).join(',')]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -1016,6 +1190,24 @@ const ProductsView = ({
                         )}
                       </p>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => openReviews(product)}
+                      className="mb-3 inline-flex items-center gap-2 text-left group/review"
+                      aria-label={`View reviews for ${product.name}`}
+                    >
+                      {reviewSummaries[product._id]?.totalReviews > 0 ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-1">
+                            {renderStars(reviewSummaries[product._id].averageRating)}
+                            <span className="text-xs font-extrabold text-gray-700 ml-0.5">{Number(reviewSummaries[product._id].averageRating || 0).toFixed(1)}</span>
+                          </span>
+                          <span className="text-xs font-semibold text-gray-400 group-hover/review:text-[#1769e0] transition">({reviewSummaries[product._id].totalReviews})</span>
+                        </>
+                      ) : (
+                        <span className="text-xs font-bold text-[#1769e0] hover:text-blue-700 hover:underline">Be the first to review →</span>
+                      )}
+                    </button>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-2xl font-bold text-blue-600">₹{product.price}</span>
                       <span className={`text-sm font-medium ${isOutOfStock ? 'text-red-500' : 'text-green-500'}`}>
@@ -1046,6 +1238,16 @@ const ProductsView = ({
           </div>
         )}
       </div>
+
+      <ProductReviewsModal
+        product={selectedReviewProduct}
+        reviews={selectedReviews}
+        averageRating={selectedAverageRating}
+        totalReviews={selectedTotalReviews}
+        loading={reviewsLoading}
+        error={reviewsError}
+        onClose={() => setSelectedReviewProduct(null)}
+      />
     </div>
   );
 };

@@ -368,4 +368,33 @@ export const deliveryAPI = {
   },
 };
 
+// ========== REVIEW APIs ==========
+
+export const reviewsAPI = {
+  getProductReviews: async (productId) => {
+    const response = await api.get(`/reviews/product/${productId}`);
+    return response.data;
+  },
+
+  create: async (productId, reviewData) => {
+    const response = await api.post(`/reviews/${productId}`, reviewData);
+    return response.data;
+  },
+
+  getMyReviews: async () => {
+    const response = await api.get('/reviews/myreviews');
+    return response.data;
+  },
+
+  update: async (reviewId, reviewData) => {
+    const response = await api.put(`/reviews/${reviewId}`, reviewData);
+    return response.data;
+  },
+
+  delete: async (reviewId) => {
+    const response = await api.delete(`/reviews/${reviewId}`);
+    return response.data;
+  },
+};
+
 export default api;
