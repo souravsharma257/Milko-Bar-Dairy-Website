@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff, Truck, Search, Star, ShieldCheck, Clock3, Leaf, ArrowRight, Store, Bike, HeartHandshake } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Package, Home, Settings, Users, TrendingUp, Menu, X, Plus, Minus, Trash2, MapPin, Phone, Mail, Calendar, Eye, EyeOff, Truck } from 'lucide-react';
 import { authAPI, productsAPI, ordersAPI, vendorAPI, deliveryAPI } from './services/api';
 import AuthModal from './AuthModal';
 import VendorRegister from './VendorRegister';
@@ -541,440 +541,217 @@ const Header = ({
   userLocationName, showMobileMenu, setShowMobileMenu,
   handleLogout, setShowAuth, setAuthMode, fetchMyOrders,
   onOpenLocationPicker
-}) => (
-  <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-xl shadow-sm">
-    <div className="container mx-auto px-4 lg:px-8">
-      <div className="flex min-h-[72px] items-center justify-between gap-4">
-        {/* Brand */}
-        <button
-          onClick={() => setView('home')}
-          className="flex items-center gap-3 text-left group shrink-0"
-        >
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-2xl shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform">
-            🥛
-          </div>
-          <div className="hidden sm:block">
-            <h1 className="text-lg font-extrabold tracking-tight text-gray-900 leading-none">
-              Milko Bar
-            </h1>
-            <p className="text-[11px] font-semibold text-blue-600 mt-1">Fresh Dairy • Delivered Fresh</p>
-          </div>
-        </button>
+}) => {
+  const go = (nextView) => {
+    setView(nextView);
+    setShowMobileMenu(false);
+  };
 
-        {/* Desktop location */}
-        <button
-          onClick={onOpenLocationPicker}
-          className="hidden lg:flex min-w-0 max-w-[250px] items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-gray-50 transition"
-        >
-          <MapPin size={18} className="text-blue-600 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Delivering to</p>
-            <p className="truncate text-xs font-bold text-gray-800">
-              {userLocationName || 'Set your location'}
-            </p>
-          </div>
-          <span className="text-[10px] font-bold text-blue-600 ml-auto">Change</span>
-        </button>
-
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          <button
-            onClick={() => setView('home')}
-            className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${view === 'home' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
-          >
-            Home
-          </button>
-
-          {currentUser?.role === 'customer' && (
-            <>
-              <button
-                onClick={() => setView('products')}
-                className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${view === 'products' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
-              >
-                Products
-              </button>
-              <button
-                onClick={() => { setView('orders'); fetchMyOrders(); }}
-                className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${view === 'orders' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
-              >
-                My Orders
-              </button>
-            </>
-          )}
-
-          {currentUser?.role === 'admin' && (
-            <button
-              onClick={() => setView('admin-dashboard')}
-              className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50"
-            >
-              Dashboard
-            </button>
-          )}
-
-          {!currentUser && !currentVendor && (
-            <>
-              <button
-                onClick={() => setView('vendor-login')}
-                className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-green-50 hover:text-green-700 transition"
-              >
-                Vendor
-              </button>
-              <button
-                onClick={() => setView('delivery-login')}
-                className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-orange-50 hover:text-orange-700 transition"
-              >
-                Delivery
-              </button>
-            </>
-          )}
-        </nav>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenLocationPicker}
-            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
-            aria-label="Set location"
-          >
-            <MapPin size={18} />
-          </button>
-
-          {currentUser?.role === 'customer' && (
-            <button
-              onClick={() => setView('cart')}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition"
-              aria-label="Cart"
-            >
-              <ShoppingCart size={20} />
-              {cart.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-extrabold text-white ring-2 ring-white">
-                  {cart.length}
-                </span>
-              )}
-            </button>
-          )}
-
-          {currentUser ? (
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="hidden lg:flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                <User size={17} />
+  return (
+    <>
+      <div className="bg-[#0f7a4d] text-white text-xs sm:text-sm py-2 px-4 text-center font-medium">
+        🥛 Fresh dairy • Local vendors • Fast doorstep delivery
+      </div>
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-sm">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="h-[72px] flex items-center justify-between gap-4">
+            <button onClick={() => go('home')} className="flex items-center gap-3 shrink-0 group">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#1769e0] to-[#0f7a4d] flex items-center justify-center text-2xl shadow-lg group-hover:scale-105 transition-transform">🥛</div>
+              <div className="text-left hidden sm:block">
+                <div className="text-xl font-black tracking-tight text-gray-900">Milko <span className="text-[#1769e0]">Bar</span></div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-gray-400 font-bold">Fresh dairy, delivered</div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-gray-800 transition"
-              >
-                Logout
+            </button>
+
+            <button
+              onClick={onOpenLocationPicker}
+              className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition text-left max-w-[220px]"
+            >
+              <MapPin size={18} className="text-[#1769e0] shrink-0" />
+              <div className="leading-tight">
+                <div className="text-[10px] text-gray-400 font-semibold">DELIVERING TO</div>
+                <div className="text-sm font-bold text-gray-800 truncate">{userLocationName || 'Set your location'} ▾</div>
+              </div>
+            </button>
+
+            <div className="hidden md:flex flex-1 max-w-xl mx-2 lg:mx-6">
+              <button onClick={() => go('products')} className="w-full flex items-center gap-3 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-2xl px-4 py-3 text-left transition">
+                <span className="text-gray-400 text-lg">⌕</span>
+                <span className="text-sm text-gray-400">Search milk, paneer, dahi & more...</span>
               </button>
             </div>
-          ) : (
-            <button
-              onClick={() => { setShowAuth(true); setAuthMode('login'); }}
-              className="rounded-xl bg-blue-600 px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-md shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition"
-            >
-              Login
+
+            <nav className="hidden md:flex items-center gap-1">
+              <button onClick={() => go('home')} className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${view === 'home' ? 'text-[#1769e0] bg-blue-50' : 'text-gray-600 hover:bg-gray-50'}`}>Home</button>
+              {currentUser?.role === 'customer' && (
+                <>
+                  <button onClick={() => go('products')} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Products</button>
+                  <button onClick={() => { setView('orders'); fetchMyOrders(); }} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Orders</button>
+                  <button onClick={() => go('cart')} className="relative p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition" aria-label="Cart">
+                    <ShoppingCart size={20} />
+                    {cart.length > 0 && <span className="absolute top-1 right-1 min-w-5 h-5 px-1 bg-[#0f7a4d] text-white text-[10px] rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
+                  </button>
+                </>
+              )}
+              {currentUser?.role === 'admin' && <button onClick={() => go('admin-dashboard')} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Dashboard</button>}
+              {!currentUser && !currentVendor && <button onClick={() => go('vendor-login')} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Vendor</button>}
+              {!currentUser && !currentVendor && <button onClick={() => go('delivery-login')} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Delivery</button>}
+              {currentUser ? (
+                <button onClick={handleLogout} className="ml-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition">Logout</button>
+              ) : (
+                <button onClick={() => { setShowAuth(true); setAuthMode('login'); }} className="ml-2 px-5 py-2.5 rounded-xl bg-[#1769e0] text-white text-sm font-bold hover:bg-blue-700 transition shadow-md">Login</button>
+              )}
+            </nav>
+
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="md:hidden p-2.5 rounded-xl bg-gray-50 text-gray-700">
+              {showMobileMenu ? <X size={23} /> : <Menu size={23} />}
             </button>
-          )}
+          </div>
 
-          <button
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className="md:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-700"
-            aria-label="Menu"
-          >
-            {showMobileMenu ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {showMobileMenu && (
+            <nav className="md:hidden pb-5 pt-2 border-t border-gray-100 space-y-2">
+              <button onClick={() => go('home')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">Home</button>
+              <button onClick={onOpenLocationPicker} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">📍 {userLocationName || 'Set your location'}</button>
+              {currentUser?.role === 'customer' && <>
+                <button onClick={() => go('products')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🛒 Products</button>
+                <button onClick={() => { setView('orders'); setShowMobileMenu(false); fetchMyOrders(); }} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">📦 My Orders</button>
+                <button onClick={() => go('cart')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🛍️ Cart ({cart.length})</button>
+              </>}
+              {!currentUser && !currentVendor && <button onClick={() => go('vendor-login')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🏪 Vendor Login</button>}
+              {!currentUser && !currentVendor && <button onClick={() => go('delivery-login')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🚴 Delivery Partner</button>}
+              {currentUser ? <button onClick={handleLogout} className="block w-full text-left px-4 py-3 rounded-xl font-semibold text-red-600 hover:bg-red-50">Logout</button> : <button onClick={() => { setShowAuth(true); setAuthMode('login'); setShowMobileMenu(false); }} className="block w-full text-left px-4 py-3 rounded-xl font-semibold text-[#1769e0] hover:bg-blue-50">Login</button>}
+            </nav>
+          )}
         </div>
-      </div>
-
-      {/* Mobile menu */}
-      {showMobileMenu && (
-        <nav className="md:hidden border-t border-gray-100 py-4 space-y-1">
-          <button onClick={() => { setView('home'); setShowMobileMenu(false); }} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-gray-700 hover:bg-blue-50">Home</button>
-          {currentUser?.role === 'customer' && (
-            <>
-              <button onClick={() => { setView('products'); setShowMobileMenu(false); }} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-gray-700 hover:bg-blue-50">Products</button>
-              <button onClick={() => { setView('orders'); setShowMobileMenu(false); fetchMyOrders(); }} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-gray-700 hover:bg-blue-50">My Orders</button>
-              <button onClick={() => { setView('cart'); setShowMobileMenu(false); }} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-gray-700 hover:bg-blue-50">Cart ({cart.length})</button>
-            </>
-          )}
-          {!currentUser && !currentVendor && (
-            <>
-              <button onClick={() => { setView('vendor-login'); setShowMobileMenu(false); }} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-gray-700 hover:bg-green-50">🏪 Vendor Login</button>
-              <button onClick={() => { setView('delivery-login'); setShowMobileMenu(false); }} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-gray-700 hover:bg-orange-50">🚴 Delivery Partner</button>
-            </>
-          )}
-          {currentUser && (
-            <button onClick={handleLogout} className="w-full rounded-xl px-4 py-3 text-left text-sm font-bold text-red-600 hover:bg-red-50">Logout</button>
-          )}
-        </nav>
-      )}
-    </div>
-  </header>
-);
+      </header>
+    </>
+  );
+};
 
 // =====================================================================
-// HomeView - premium grocery/dairy storefront
+// HomeView - premium quick-commerce + dairy brand layout
 // =====================================================================
 const HomeView = ({ currentUser, setShowAuth, setAuthMode, setView, setSelectedCategory }) => {
   const categories = [
-    { name: 'Milk', icon: '🥛', tone: 'from-blue-50 to-white', accent: 'text-blue-700' },
-    { name: 'Dahi', icon: '🥣', tone: 'from-purple-50 to-white', accent: 'text-purple-700' },
-    { name: 'Paneer', icon: '🧀', tone: 'from-amber-50 to-white', accent: 'text-amber-700' },
-    { name: 'Butter', icon: '🧈', tone: 'from-yellow-50 to-white', accent: 'text-yellow-700' },
-    { name: 'Ghee', icon: '🫙', tone: 'from-orange-50 to-white', accent: 'text-orange-700' },
-    { name: 'Lassi', icon: '🥤', tone: 'from-pink-50 to-white', accent: 'text-pink-700' },
-    { name: 'Buttermilk', icon: '🥛', tone: 'from-cyan-50 to-white', accent: 'text-cyan-700' },
-    { name: 'Ice Cream', icon: '🍨', tone: 'from-indigo-50 to-white', accent: 'text-indigo-700' },
+    ['Milk', '🥛', 'Daily essential'], ['Dahi', '🥣', 'Fresh & creamy'],
+    ['Paneer', '🧀', 'Soft & fresh'], ['Butter', '🧈', 'Rich & smooth'],
+    ['Ghee', '🫙', 'Pure goodness'], ['Lassi', '🥤', 'Chilled & fresh'],
+    ['Buttermilk', '🥛', 'Light & refreshing'], ['Ice Cream', '🍨', 'Sweet treats']
   ];
 
-  const shop = (category = 'All') => {
-    setSelectedCategory(category);
+  const openProducts = (cat = 'All') => {
+    setSelectedCategory(cat);
     setView('products');
   };
 
   return (
-    <div className="min-h-screen bg-[#fafbff] text-gray-900">
+    <div className="min-h-screen bg-[#f8faf9] text-gray-900">
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50" />
-        <div className="absolute -left-28 top-10 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-indigo-200/30 blur-3xl" />
-
-        <div className="container relative mx-auto px-4 lg:px-8">
-          <div className="grid min-h-[570px] items-center gap-10 py-12 lg:grid-cols-[1.05fr_.95fr] lg:py-16">
-            <div className="max-w-2xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-xs font-extrabold text-blue-700 shadow-sm">
-                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                Fresh from local dairies
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#eaf4ff] via-white to-[#eaf8f1]">
+        <div className="absolute -top-32 -right-24 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-24 w-96 h-96 bg-green-200/30 rounded-full blur-3xl" />
+        <div className="container mx-auto px-4 lg:px-6 py-12 md:py-20 lg:py-24 relative">
+          <div className="grid lg:grid-cols-[1.05fr_0.95fr] items-center gap-10 lg:gap-16">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-white border border-blue-100 shadow-sm rounded-full px-4 py-2 text-xs sm:text-sm font-bold text-[#1769e0] mb-6">
+                <span className="w-2 h-2 bg-[#0f7a4d] rounded-full animate-pulse" /> Fresh from local dairies
               </div>
-
-              <h2 className="text-5xl font-black leading-[1.02] tracking-tight text-gray-950 sm:text-6xl lg:text-7xl">
-                Fresh dairy,
-                <span className="block bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-                  delivered fresh.
-                </span>
-              </h2>
-
-              <p className="mt-6 max-w-xl text-base leading-7 text-gray-600 sm:text-lg">
-                Pure milk, dahi, paneer, butter and more — sourced from trusted local dairies and brought straight to your doorstep.
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.95] tracking-[-0.04em] text-gray-950">
+                Freshness you can <span className="text-[#1769e0]">taste.</span>
+              </h1>
+              <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-xl leading-relaxed">
+                Pure milk, dahi, paneer and your everyday dairy favourites — delivered fresh to your doorstep.
               </p>
-
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <button
-                  onClick={() => shop('All')}
-                  className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-7 py-4 text-sm font-extrabold text-white shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition"
-                >
-                  Shop fresh products
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-
-                {!currentUser && (
-                  <button
-                    onClick={() => { setShowAuth(true); setAuthMode('register'); }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-7 py-4 text-sm font-extrabold text-gray-800 shadow-sm hover:border-blue-200 hover:bg-blue-50 transition"
-                  >
-                    Create account
-                  </button>
-                )}
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button onClick={() => openProducts()} className="px-7 py-3.5 rounded-2xl bg-[#1769e0] text-white font-extrabold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition">Shop Dairy Products →</button>
+                {!currentUser && <button onClick={() => { setShowAuth(true); setAuthMode('register'); }} className="px-7 py-3.5 rounded-2xl bg-white border border-gray-200 text-gray-800 font-extrabold hover:border-blue-200 hover:bg-blue-50 transition">Create Account</button>}
               </div>
-
-              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold text-gray-500">
-                <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-green-600" /> Quality checked</span>
-                <span className="flex items-center gap-2"><Clock3 size={16} className="text-blue-600" /> Quick delivery</span>
-                <span className="flex items-center gap-2"><Leaf size={16} className="text-green-600" /> Fresh & pure</span>
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-gray-500">
+                <span>✓ Quality first</span><span>✓ Nearby vendors</span><span>✓ Doorstep delivery</span>
               </div>
             </div>
 
-            {/* Hero product composition — no external image dependency */}
-            <div className="relative mx-auto w-full max-w-xl">
-              <div className="absolute left-8 top-10 h-48 w-48 rounded-full bg-blue-200/40 blur-2xl" />
-              <div className="absolute bottom-4 right-2 h-44 w-44 rounded-full bg-green-200/40 blur-2xl" />
-
-              <div className="relative rounded-[2.5rem] border border-white bg-white/80 p-5 shadow-2xl shadow-blue-100 backdrop-blur">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 flex min-h-[235px] items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-100 via-white to-cyan-50">
-                    <div className="text-center">
-                      <div className="text-8xl drop-shadow-md">🥛</div>
-                      <p className="mt-3 text-sm font-black text-gray-800">Fresh Milk</p>
-                      <p className="text-xs text-gray-500">Pure • Fresh • Local</p>
-                    </div>
-                  </div>
-                  <div className="flex min-h-[125px] items-center justify-center rounded-3xl bg-gradient-to-br from-amber-50 to-white border border-amber-100">
-                    <div className="text-center"><div className="text-5xl">🧀</div><p className="mt-2 text-xs font-extrabold">Paneer</p></div>
-                  </div>
-                  <div className="flex min-h-[125px] items-center justify-center rounded-3xl bg-gradient-to-br from-green-50 to-white border border-green-100">
-                    <div className="text-center"><div className="text-5xl">🥣</div><p className="mt-2 text-xs font-extrabold">Dahi</p></div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between rounded-2xl bg-gray-950 px-5 py-4 text-white">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Milko Bar promise</p>
-                    <p className="mt-1 text-sm font-extrabold">Freshness at your doorstep</p>
-                  </div>
-                  <HeartHandshake size={26} className="text-blue-300" />
+            <div className="relative min-h-[390px] flex items-center justify-center">
+              <div className="absolute w-[300px] h-[300px] sm:w-[380px] sm:h-[380px] rounded-full bg-gradient-to-br from-blue-100 to-green-100 border border-white shadow-inner" />
+              <div className="relative w-[270px] sm:w-[330px] h-[320px] sm:h-[380px] rounded-[40px] bg-white/75 backdrop-blur-md border border-white shadow-2xl flex items-center justify-center">
+                <div className="text-[145px] sm:text-[175px] drop-shadow-2xl">🥛</div>
+                <div className="absolute bottom-6 left-5 right-5 bg-white/90 rounded-2xl p-4 shadow-xl border border-gray-100 flex items-center justify-between">
+                  <div><div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Milko Bar</div><div className="font-black text-gray-900">Fresh dairy, every day</div></div>
+                  <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">✓</div>
                 </div>
               </div>
-
-              <div className="absolute -right-3 top-8 hidden rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-xl sm:block">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-50 text-yellow-500"><Star size={16} fill="currentColor" /></div>
-                  <div><p className="text-xs font-black">Freshness first</p><p className="text-[10px] text-gray-500">Every order</p></div>
-                </div>
-              </div>
-
-              <div className="absolute -left-4 bottom-10 hidden rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-xl sm:block">
-                <div className="flex items-center gap-2">
-                  <div className="text-2xl">🚚</div>
-                  <div><p className="text-xs font-black">Doorstep delivery</p><p className="text-[10px] text-gray-500">Local & quick</p></div>
-                </div>
-              </div>
+              <div className="absolute top-8 right-0 sm:right-2 bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100 animate-[bounce_4s_infinite]"><div className="font-black text-gray-900">⚡ Fast delivery</div><div className="text-xs text-gray-500">From nearby dairies</div></div>
+              <div className="absolute bottom-10 left-0 sm:left-4 bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100"><div className="font-black text-gray-900">⭐ Quality first</div><div className="text-xs text-gray-500">Freshness you trust</div></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Trust strip */}
-      <section className="border-y border-gray-100 bg-white">
-        <div className="container mx-auto grid grid-cols-2 divide-x divide-gray-100 px-4 py-5 md:grid-cols-4 lg:px-8">
+      <section className="container mx-auto px-4 lg:px-6 -mt-6 relative z-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
           {[
-            [ShieldCheck, 'Quality assured', 'Trusted dairy products'],
-            [Clock3, 'Fast delivery', 'Fresh at your doorstep'],
-            [Leaf, 'Fresh & pure', 'Carefully sourced'],
-            [HeartHandshake, 'Local partners', 'Growing with dairies'],
-          ].map(([Icon, title, subtitle]) => (
-            <div key={title} className="flex items-center justify-center gap-3 px-3 py-2">
-              <Icon size={22} className="shrink-0 text-blue-600" />
-              <div>
-                <p className="text-xs font-extrabold text-gray-900">{title}</p>
-                <p className="hidden text-[10px] text-gray-500 sm:block">{subtitle}</p>
-              </div>
-            </div>
-          ))}
+            ['🥛', 'Fresh Products', 'Made for everyday'], ['🚚', 'Quick Delivery', 'From nearby vendors'], ['🛡️', 'Quality Assured', 'Care in every order'], ['💚', 'Local & Trusted', 'Supporting dairies']
+          ].map(([icon, title, text]) => <div key={title} className="p-5 sm:p-6 flex items-center gap-3 border-b lg:border-b-0 lg:border-r last:border-0 border-gray-100">
+            <div className="text-2xl sm:text-3xl">{icon}</div><div><div className="font-extrabold text-sm sm:text-base">{title}</div><div className="text-[11px] sm:text-xs text-gray-500 mt-0.5">{text}</div></div>
+          </div>)}
         </div>
       </section>
 
       {/* Categories */}
-      <section className="container mx-auto px-4 py-16 lg:px-8">
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Shop by category</p>
-            <h3 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">What are you craving?</h3>
-          </div>
-          <button onClick={() => shop('All')} className="hidden items-center gap-1 text-sm font-extrabold text-blue-600 sm:flex">
-            View all <ChevronRightIcon />
-          </button>
+      <section className="container mx-auto px-4 lg:px-6 py-16 lg:py-20">
+        <div className="flex items-end justify-between gap-4 mb-8">
+          <div><p className="text-sm font-black text-[#1769e0] uppercase tracking-widest">Shop by category</p><h2 className="text-3xl sm:text-4xl font-black mt-2">Your daily dairy favourites</h2></div>
+          <button onClick={() => openProducts()} className="hidden sm:block text-sm font-bold text-[#1769e0] hover:underline">View all →</button>
         </div>
-
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-          {categories.map(cat => (
-            <button
-              key={cat.name}
-              onClick={() => shop(cat.name)}
-              className={`group rounded-3xl border border-gray-100 bg-gradient-to-b ${cat.tone} p-4 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all`}
-            >
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-white text-5xl shadow-sm group-hover:scale-105 transition-transform">
-                {cat.icon}
-              </div>
-              <p className={`mt-3 text-xs font-extrabold ${cat.accent}`}>{cat.name}</p>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
+          {categories.map(([cat, icon, subtitle]) => <button key={cat} onClick={() => openProducts(cat)} className="group bg-white border border-gray-100 rounded-3xl p-4 sm:p-5 text-center shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center text-4xl sm:text-5xl group-hover:scale-105 transition-transform">{icon}</div>
+            <div className="mt-3 font-extrabold text-sm">{cat}</div><div className="text-[10px] text-gray-400 mt-1">{subtitle}</div>
+          </button>)}
         </div>
       </section>
 
-      {/* Marketplace banner */}
-      <section className="container mx-auto px-4 pb-16 lg:px-8">
-        <div className="overflow-hidden rounded-[2rem] bg-gradient-to-r from-gray-950 via-gray-900 to-blue-950 p-8 text-white shadow-2xl sm:p-12">
-          <div className="grid items-center gap-8 md:grid-cols-[1fr_auto]">
-            <div>
-              <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-blue-200">Milko Bar marketplace</span>
-              <h3 className="mt-4 max-w-2xl text-3xl font-black sm:text-4xl">One place for your everyday dairy.</h3>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-300">Discover products from nearby dairy partners and get them delivered without the hassle.</p>
-            </div>
-            <button onClick={() => shop('All')} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-extrabold text-gray-900 hover:bg-blue-50 transition">
-              Explore products <ArrowRight size={17} />
-            </button>
+      {/* Brand story */}
+      <section className="container mx-auto px-4 lg:px-6 pb-16">
+        <div className="rounded-[32px] bg-gradient-to-r from-[#0f7a4d] to-[#1769e0] text-white overflow-hidden relative">
+          <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-white/10" /><div className="absolute -left-10 -bottom-24 w-56 h-56 rounded-full bg-white/10" />
+          <div className="relative grid lg:grid-cols-[1fr_auto] items-center gap-8 p-8 sm:p-12">
+            <div><p className="text-green-100 text-sm font-bold uppercase tracking-widest">From local dairies to your home</p><h2 className="text-3xl sm:text-4xl font-black mt-2">Good dairy should feel simple.</h2><p className="mt-4 text-white/80 max-w-2xl leading-relaxed">Milko Bar connects customers with nearby dairy vendors so fresh everyday products can reach you with less hassle and more convenience.</p></div>
+            <button onClick={() => openProducts()} className="justify-self-start lg:justify-self-end bg-white text-gray-900 px-6 py-3.5 rounded-2xl font-extrabold shadow-xl hover:scale-105 transition">Start Shopping →</button>
           </div>
         </div>
       </section>
 
-      {/* Partner cards */}
+      {/* Partners */}
       <section className="bg-white border-y border-gray-100">
-        <div className="container mx-auto grid gap-5 px-4 py-16 md:grid-cols-2 lg:px-8">
-          <div className="group overflow-hidden rounded-[2rem] border border-green-100 bg-gradient-to-br from-green-50 to-white p-8 shadow-sm hover:shadow-xl transition">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-600 text-white shadow-lg shadow-green-100">
-                <Store size={26} />
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-[10px] font-extrabold text-green-700 shadow-sm">FOR DAIRY OWNERS</span>
+        <div className="container mx-auto px-4 lg:px-6 py-16">
+          <div className="text-center max-w-2xl mx-auto mb-10"><p className="text-sm font-black text-[#0f7a4d] uppercase tracking-widest">Grow with Milko Bar</p><h2 className="text-3xl sm:text-4xl font-black mt-2">More than a dairy store</h2><p className="text-gray-500 mt-3">A platform for local dairy businesses and delivery partners.</p></div>
+          <div className="grid md:grid-cols-2 gap-5 max-w-5xl mx-auto">
+            <div className="group rounded-3xl p-7 sm:p-9 bg-gradient-to-br from-green-50 to-white border border-green-100 hover:shadow-xl transition">
+              <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center text-3xl">🏪</div><h3 className="text-2xl font-black mt-5">Own a dairy?</h3><p className="text-gray-600 mt-2 leading-relaxed">Bring your fresh products online, reach nearby customers and grow your local business.</p><button onClick={() => setView('vendor-register')} className="mt-6 px-5 py-3 rounded-xl bg-[#0f7a4d] text-white font-bold hover:bg-green-700 transition">Become a Vendor →</button>
             </div>
-            <h3 className="mt-7 text-2xl font-black">Grow your dairy with Milko Bar.</h3>
-            <p className="mt-2 max-w-lg text-sm leading-6 text-gray-600">List your fresh products, reach nearby customers and grow your local business online.</p>
-            <button onClick={() => setView('vendor-register')} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-extrabold text-white hover:bg-green-700 transition">
-              Become a vendor <ArrowRight size={16} />
-            </button>
-          </div>
-
-          <div className="group overflow-hidden rounded-[2rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white p-8 shadow-sm hover:shadow-xl transition">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-100">
-                <Bike size={26} />
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-[10px] font-extrabold text-orange-700 shadow-sm">FOR DELIVERY PARTNERS</span>
+            <div className="group rounded-3xl p-7 sm:p-9 bg-gradient-to-br from-blue-50 to-white border border-blue-100 hover:shadow-xl transition">
+              <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center text-3xl">🚴</div><h3 className="text-2xl font-black mt-5">Want to deliver?</h3><p className="text-gray-600 mt-2 leading-relaxed">Accept nearby orders and earn on your own schedule with Milko Bar.</p><button onClick={() => setView('delivery-register')} className="mt-6 px-5 py-3 rounded-xl bg-[#1769e0] text-white font-bold hover:bg-blue-700 transition">Join as Partner →</button>
             </div>
-            <h3 className="mt-7 text-2xl font-black">Deliver with Milko Bar.</h3>
-            <p className="mt-2 max-w-lg text-sm leading-6 text-gray-600">Accept nearby orders, deliver locally and earn on your own schedule.</p>
-            <button onClick={() => setView('delivery-register')} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-extrabold text-white hover:bg-orange-600 transition">
-              Join as delivery partner <ArrowRight size={16} />
-            </button>
           </div>
         </div>
       </section>
 
       {/* Contact footer */}
       <footer className="bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-12 lg:px-8">
-          <div className="grid gap-10 md:grid-cols-[1.3fr_1fr_1fr]">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-2xl">🥛</div>
-                <div>
-                  <p className="text-lg font-black">Milko Bar Dairy</p>
-                  <p className="text-xs text-gray-400">Fresh dairy. Delivered fresh.</p>
-                </div>
-              </div>
-              <p className="mt-5 max-w-sm text-sm leading-6 text-gray-400">Connecting local dairies with families through a simple, reliable and fresh dairy shopping experience.</p>
-            </div>
-
-            <div>
-              <p className="text-sm font-extrabold">Quick links</p>
-              <div className="mt-4 space-y-3 text-sm text-gray-400">
-                <button onClick={() => setView('home')} className="block hover:text-white">Home</button>
-                <button onClick={() => shop('All')} className="block hover:text-white">Products</button>
-                <button onClick={() => setView('vendor-register')} className="block hover:text-white">Become a Vendor</button>
-                <button onClick={() => setView('delivery-register')} className="block hover:text-white">Delivery Partner</button>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-sm font-extrabold">Contact us</p>
-              <div className="mt-4 space-y-4 text-sm text-gray-400">
-                <p className="flex items-center gap-3"><Phone size={16} /> +91 9358634955</p>
-                <p className="flex items-center gap-3"><Mail size={16} /> milkobardairy@gmail.com</p>
-                <p className="flex items-center gap-3"><MapPin size={16} /> Nimrana, Rajasthan</p>
-              </div>
-            </div>
+        <div className="container mx-auto px-4 lg:px-6 py-12">
+          <div className="grid md:grid-cols-[1.4fr_1fr_1fr] gap-10">
+            <div><div className="flex items-center gap-3"><div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">🥛</div><div className="text-2xl font-black">Milko Bar</div></div><p className="text-gray-400 mt-4 max-w-sm text-sm leading-relaxed">Fresh dairy products from local vendors, delivered with care to your doorstep.</p></div>
+            <div><h4 className="font-bold mb-4">Quick links</h4><div className="space-y-2 text-sm text-gray-400"><button onClick={() => setView('home')} className="block hover:text-white">Home</button><button onClick={() => openProducts()} className="block hover:text-white">Products</button><button onClick={() => setView('vendor-register')} className="block hover:text-white">Become a Vendor</button><button onClick={() => setView('delivery-register')} className="block hover:text-white">Delivery Partner</button></div></div>
+            <div><h4 className="font-bold mb-4">Contact</h4><div className="space-y-3 text-sm text-gray-400"><div>📞 +91 9358634955</div><div>✉️ milkobardairy@gmail.com</div><div>📍 Nimrana, Rajasthan</div></div></div>
           </div>
-          <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-gray-500">
-            © {new Date().getFullYear()} Milko Bar Dairy. Freshness delivered with care.
-          </div>
+          <div className="border-t border-white/10 mt-10 pt-6 text-xs text-gray-500 flex flex-wrap justify-between gap-3"><span>© {new Date().getFullYear()} Milko Bar Dairy. All rights reserved.</span><span>Fresh dairy. Local trust.</span></div>
         </div>
       </footer>
     </div>
   );
 };
-
-// Small local icon component keeps the category section dependency-free.
-const ChevronRightIcon = () => <ArrowRight size={15} />;
 
 // =====================================================================
 // ProductsView - module-level. Location comes from App via props;
