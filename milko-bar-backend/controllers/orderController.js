@@ -79,6 +79,9 @@ const createOrder = async (req, res) => {
       );
     }
 
+    // TEMP DEBUG - remove once email is confirmed working
+    console.log('🔍 DEBUG req.user:', req.user ? { id: req.user._id, email: req.user.email } : 'req.user is undefined/null');
+
     // Send confirmation email (fire-and-forget - never blocks or fails the order)
     if (req.user?.email) {
       sendOrderPlacedEmail(req.user.email, order);

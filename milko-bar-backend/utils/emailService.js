@@ -69,7 +69,7 @@ const safeSend = async (mailOptions) => {
 
 // @desc  Sent right after a customer places an order
 const sendOrderPlacedEmail = async (toEmail, order) => {
-  if (!toEmail) return;
+  if (!toEmail) { console.warn('📧 Skipped email - no recipient address provided'); return; }
 
   const html = wrapEmailBody(
     `Order Confirmed! ✅`,
@@ -95,7 +95,7 @@ const sendOrderPlacedEmail = async (toEmail, order) => {
 
 // @desc  Sent when an order's status changes to 'Delivered'
 const sendOrderDeliveredEmail = async (toEmail, order) => {
-  if (!toEmail) return;
+  if (!toEmail) { console.warn('📧 Skipped email - no recipient address provided'); return; }
 
   const html = wrapEmailBody(
     `Delivered! 🎉`,
