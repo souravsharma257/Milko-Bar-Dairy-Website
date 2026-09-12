@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const { sendOrderPlacedEmail, sendOrderDeliveredEmail } = require('../utils/emailService');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -76,6 +77,11 @@ const createOrder = async (req, res) => {
         item.product,
         { $inc: { stock: -item.quantity } }
       );
+    }
+
+    // Send confirmation email (fire-and-forget - never blocks or fails the order)
+    if (req.user?.email) {
+      sendOrderPlacedEmail(req.user.email, order);
     }
 
     res.status(201).json({
@@ -179,6 +185,11 @@ const updateOrderStatus = async (req, res) => {
       }
 
       const updatedOrder = await order.save();
+
+      // Send delivered email (fire-and-forget)
+      if (status === 'Delivered' && order.user?.email) {
+        sendOrderDeliveredEmail(order.user.email, updatedOrder);
+      }
 
       res.json({
         success: true,

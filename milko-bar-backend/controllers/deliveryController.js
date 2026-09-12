@@ -1,6 +1,7 @@
 const DeliveryBoy = require('../models/DeliveryBoy');
 const Order = require('../models/Order');
 const jwt = require('jsonwebtoken');
+const { sendOrderDeliveredEmail } = require('../utils/emailService');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -281,7 +282,8 @@ const updateDeliveryStatus = async (req, res) => {
   try {
     const { status } = req.body; // expected: 'In Transit' or 'Delivered'
 
-    const order = await Order.findOne({ _id: req.params.id, deliveryBoy: req.deliveryBoy._id });
+    const order = await Order.findOne({ _id: req.params.id, deliveryBoy: req.deliveryBoy._id })
+      .populate('user', 'email firstName lastName');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found or not assigned to you' });
@@ -304,6 +306,12 @@ const updateDeliveryStatus = async (req, res) => {
     }
 
     const updated = await order.save();
+
+    // Send delivered email (fire-and-forget - never blocks or fails the request)
+    if (status === 'Delivered' && order.user?.email) {
+      sendOrderDeliveredEmail(order.user.email, updated);
+    }
+
     res.json({ success: true, data: updated });
   } catch (error) {
     res.status(400).json({ message: error.message });
