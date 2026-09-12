@@ -540,7 +540,7 @@ const Header = ({
   currentUser, currentVendor, cart, view, setView,
   userLocationName, showMobileMenu, setShowMobileMenu,
   handleLogout, setShowAuth, setAuthMode, fetchMyOrders,
-  onOpenLocationPicker
+  onOpenLocationPicker, onOpenAccount
 }) => {
   const go = (nextView) => {
     setView(nextView);
@@ -587,7 +587,8 @@ const Header = ({
                 <>
                   <button onClick={() => go('products')} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Products</button>
                   <button onClick={() => { setView('orders'); fetchMyOrders(); }} className="px-3 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Orders</button>
-                  <button onClick={() => go('cart')} className="relative p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition" aria-label="Cart">
+                  <button onClick={onOpenAccount} className="p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition" aria-label="My Account" title="My Account"><User size={20} /></button>
+                    <button onClick={() => go('cart')} className="relative p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition" aria-label="Cart">
                     <ShoppingCart size={20} />
                     {cart.length > 0 && <span className="absolute top-1 right-1 min-w-5 h-5 px-1 bg-[#0f7a4d] text-white text-[10px] rounded-full flex items-center justify-center font-bold">{cart.length}</span>}
                   </button>
@@ -615,6 +616,7 @@ const Header = ({
               {currentUser?.role === 'customer' && <>
                 <button onClick={() => go('products')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🛒 Products</button>
                 <button onClick={() => { setView('orders'); setShowMobileMenu(false); fetchMyOrders(); }} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">📦 My Orders</button>
+                <button onClick={onOpenAccount} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">👤 My Account</button>
                 <button onClick={() => go('cart')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🛍️ Cart ({cart.length})</button>
               </>}
               {!currentUser && !currentVendor && <button onClick={() => go('vendor-login')} className="block w-full text-left px-4 py-3 rounded-xl font-semibold hover:bg-gray-50">🏪 Vendor Login</button>}
@@ -1637,6 +1639,236 @@ const OrdersView = ({ orders, setView, fetchMyOrders }) => {
   );
 };
 
+
+// =====================================================================
+// Customer Account - profile, address, orders and reviews
+// Payment history is intentionally not shown because payment gateway is
+// not implemented yet.
+// =====================================================================
+const CustomerAccountView = ({ account, loading, error, onRefresh, onBack, onProfileUpdated }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({});
+  const [reviewEdit, setReviewEdit] = useState(null);
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  useEffect(() => {
+    if (account?.profile) {
+      setForm({
+        firstName: account.profile.firstName || '',
+        lastName: account.profile.lastName || '',
+        phone: account.profile.phone || '',
+        address: account.profile.address || ''
+      });
+    }
+  }, [account]);
+
+  const profile = account?.profile || {};
+  const stats = account?.stats || {};
+  const orders = Array.isArray(account?.orders) ? account.orders : [];
+  const reviews = Array.isArray(account?.reviews) ? account.reviews : [];
+
+  const saveProfile = async () => {
+    try {
+      setSaving(true);
+      const response = await api.put('/auth/profile', form);
+      const updated = response?.data?.data || response?.data || response;
+      if (updated?.token) {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...stored, ...updated }));
+      }
+      setEditMode(false);
+      if (onProfileUpdated) onProfileUpdated(updated);
+      await onRefresh();
+      alert('Profile updated successfully! ✅');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteReview = async (reviewId) => {
+    if (!window.confirm('Delete this review?')) return;
+    try {
+      await api.delete(`/reviews/${reviewId}`);
+      await onRefresh();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete review');
+    }
+  };
+
+  const saveReview = async () => {
+    if (!reviewEdit?._id) return;
+    if (Number(reviewEdit.rating) < 1 || Number(reviewEdit.rating) > 5 || (reviewEdit.comment || '').trim().length < 10) {
+      alert('Rating must be 1-5 and comment must contain at least 10 characters.');
+      return;
+    }
+    try {
+      setReviewSaving(true);
+      await api.put(`/reviews/${reviewEdit._id}`, {
+        rating: Number(reviewEdit.rating),
+        comment: reviewEdit.comment.trim()
+      });
+      setReviewEdit(null);
+      await onRefresh();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update review');
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const statusClass = {
+    Pending: 'bg-yellow-100 text-yellow-700',
+    Confirmed: 'bg-blue-100 text-blue-700',
+    Processing: 'bg-purple-100 text-purple-700',
+    'In Transit': 'bg-indigo-100 text-indigo-700',
+    Delivered: 'bg-green-100 text-green-700',
+    Cancelled: 'bg-red-100 text-red-700'
+  };
+
+  if (loading && !account) {
+    return <div className="min-h-screen bg-gray-50 py-16 text-center"><div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto" /><p className="mt-4 text-gray-500">Loading your account...</p></div>;
+  }
+
+  if (error && !account) {
+    return <div className="min-h-screen bg-gray-50 py-16 text-center px-4"><div className="text-5xl">⚠️</div><h2 className="text-xl font-bold mt-4">Could not load account</h2><p className="text-gray-500 mt-2">{error}</p><button onClick={onRefresh} className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold">Try Again</button></div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f7f9fb] py-8 sm:py-10">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="rounded-[30px] overflow-hidden bg-gradient-to-br from-[#1769e0] via-[#155fc9] to-[#0f7a4d] text-white shadow-xl">
+          <div className="p-6 sm:p-8 lg:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-white/15 border border-white/20 flex items-center justify-center text-3xl sm:text-4xl font-black">
+                {(profile.firstName || 'C').charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-blue-100 text-xs font-black uppercase tracking-widest">Customer account</p>
+                <h1 className="text-2xl sm:text-3xl font-black mt-1">{profile.fullName || 'Customer'}</h1>
+                <p className="text-white/75 text-sm mt-1">{profile.email || ''}</p>
+              </div>
+            </div>
+            <button onClick={onBack} className="px-5 py-2.5 rounded-xl bg-white text-gray-900 font-bold hover:bg-gray-100">← Continue Shopping</button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-white/15">
+            {[
+              ['Orders', stats.totalOrders || 0],
+              ['Active', stats.activeOrders || 0],
+              ['Delivered', stats.deliveredOrders || 0],
+              ['Reviews', stats.totalReviews || 0]
+            ].map(([label, value]) => <div key={label} className="p-4 sm:p-5 border-r last:border-r-0 border-white/15"><div className="text-2xl font-black">{value}</div><div className="text-xs text-white/70 font-semibold mt-1">{label}</div></div>)}
+          </div>
+        </div>
+
+        <div className="mt-6 grid lg:grid-cols-[230px_1fr] gap-5">
+          <aside className="bg-white rounded-3xl border border-gray-100 shadow-sm p-3 h-fit">
+            {[
+              ['overview', '👤', 'Profile'],
+              ['address', '📍', 'My Address'],
+              ['orders', '📦', 'My Orders'],
+              ['reviews', '⭐', 'My Reviews']
+            ].map(([id, icon, label]) => (
+              <button key={id} onClick={() => setActiveTab(id)} className={`w-full text-left px-4 py-3.5 rounded-2xl flex items-center gap-3 font-bold transition ${activeTab === id ? 'bg-blue-50 text-[#1769e0]' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <span>{icon}</span>{label}
+              </button>
+            ))}
+            <div className="mt-3 p-3 rounded-2xl bg-gray-50 text-xs text-gray-500">
+              💳 Payment history will be added when the online payment gateway is implemented.
+            </div>
+          </aside>
+
+          <main className="min-w-0">
+            {activeTab === 'overview' && (
+              <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-7">
+                <div className="flex justify-between items-center gap-3 mb-6">
+                  <div><p className="text-xs font-black uppercase tracking-widest text-[#1769e0]">Your details</p><h2 className="text-2xl font-black mt-1">Profile</h2></div>
+                  <button onClick={() => setEditMode(!editMode)} className="px-4 py-2 rounded-xl border border-gray-200 font-bold hover:bg-gray-50">{editMode ? 'Cancel' : '✏️ Edit'}</button>
+                </div>
+                {editMode ? (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {[
+                      ['firstName', 'First name'], ['lastName', 'Last name'],
+                      ['phone', 'Phone'], ['address', 'Address']
+                    ].map(([key, label]) => <label key={key} className={key === 'address' ? 'sm:col-span-2' : ''}><span className="text-xs font-bold text-gray-500">{label}</span><input value={form[key] || ''} onChange={e => setForm({ ...form, [key]: e.target.value })} className="mt-1 w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-100" /></label>)}
+                    <div className="sm:col-span-2 flex justify-end"><button disabled={saving} onClick={saveProfile} className="px-6 py-3 rounded-xl bg-[#1769e0] text-white font-bold disabled:opacity-50">{saving ? 'Saving...' : 'Save Changes'}</button></div>
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {[
+                      ['Full name', profile.fullName], ['Email', profile.email],
+                      ['Phone', profile.phone], ['Account created', profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'long',year:'numeric'}) : '—'],
+                      ['Address', profile.address]
+                    ].map(([label, value], i) => <div key={label} className={i === 4 ? 'sm:col-span-2' : 'p-4 rounded-2xl bg-gray-50'}><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</p><p className="font-bold text-gray-800 mt-1 break-words">{value || 'Not provided'}</p></div>)}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'address' && (
+              <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-7">
+                <p className="text-xs font-black uppercase tracking-widest text-[#0f7a4d]">Delivery address</p>
+                <h2 className="text-2xl font-black mt-1 mb-6">My Address</h2>
+                <div className="rounded-3xl bg-gradient-to-br from-green-50 to-blue-50 border border-green-100 p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-2xl shadow-sm">📍</div>
+                  <h3 className="font-black text-lg mt-4">Primary address</h3>
+                  <p className="text-gray-600 leading-7 mt-2">{profile.address || 'No address saved yet.'}</p>
+                  <button onClick={() => { setActiveTab('overview'); setEditMode(true); }} className="mt-5 px-5 py-2.5 rounded-xl bg-white border border-gray-200 font-bold hover:bg-gray-50">✏️ Edit Address</button>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'orders' && (
+              <section>
+                <div className="flex items-center justify-between mb-5"><div><p className="text-xs font-black uppercase tracking-widest text-[#1769e0]">Purchase history</p><h2 className="text-2xl font-black mt-1">My Orders</h2></div><button onClick={onRefresh} className="px-4 py-2 rounded-xl border border-gray-200 font-bold hover:bg-gray-50">↻ Refresh</button></div>
+                {orders.length === 0 ? <div className="bg-white rounded-3xl p-12 text-center border border-gray-100"><Package size={54} className="mx-auto text-gray-300" /><h3 className="font-black text-xl mt-4">No orders yet</h3><p className="text-gray-500 mt-1">Your order history will appear here.</p></div> :
+                  <div className="space-y-4">{orders.map(order => <article key={order._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex flex-wrap justify-between gap-3">
+                      <div><p className="font-black text-lg">Order #{order._id.slice(-6)}</p><p className="text-xs text-gray-400 mt-1">{new Date(order.orderDate || order.createdAt).toLocaleString('en-IN')}</p></div>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-black ${statusClass[order.status] || 'bg-gray-100 text-gray-700'}`}>{order.status}</span>
+                    </div>
+                    <div className="mt-4 space-y-2">{(order.items || []).map((item, i) => <div key={i} className="flex justify-between text-sm"><span className="text-gray-600">{item.name} × {item.quantity}</span><span className="font-bold">₹{Number(item.price || 0) * Number(item.quantity || 0)}</span></div>)}</div>
+                    <div className="border-t mt-4 pt-4 flex flex-wrap justify-between gap-3"><span className="text-gray-500 text-sm">Delivery: {order.userAddress || profile.address || '—'}</span><span className="text-xl font-black text-[#1769e0]">₹{order.total}</span></div>
+                  </article>)}</div>}
+              </section>
+            )}
+
+            {activeTab === 'reviews' && (
+              <section>
+                <div className="flex items-center justify-between mb-5"><div><p className="text-xs font-black uppercase tracking-widest text-amber-500">Your feedback</p><h2 className="text-2xl font-black mt-1">My Reviews</h2></div><button onClick={onRefresh} className="px-4 py-2 rounded-xl border border-gray-200 font-bold hover:bg-gray-50">↻ Refresh</button></div>
+                {reviews.length === 0 ? <div className="bg-white rounded-3xl p-12 text-center border border-gray-100"><div className="text-5xl">⭐</div><h3 className="font-black text-xl mt-4">No reviews yet</h3><p className="text-gray-500 mt-1">Reviews you write will appear here.</p></div> :
+                  <div className="space-y-4">{reviews.map(review => <article key={review._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center text-3xl shrink-0 overflow-hidden">{review.product?.imageUrl ? <img src={review.product.imageUrl} alt="" className="w-full h-full object-cover" /> : (review.product?.image || '🥛')}</div>
+                      <div className="min-w-0 flex-1"><h3 className="font-black text-gray-900 truncate">{review.product?.name || 'Product'}</h3><div className="mt-1">{renderStars(review.rating, 'text-base')} <span className="text-xs font-bold text-gray-500 ml-1">{review.rating}/5</span></div><p className="text-xs text-gray-400 mt-1">{review.createdAt ? new Date(review.createdAt).toLocaleDateString('en-IN') : ''}</p></div>
+                    </div>
+                    <p className="text-gray-600 leading-6 mt-4">{review.comment}</p>
+                    <div className="flex justify-end gap-2 mt-4 pt-4 border-t"><button onClick={() => setReviewEdit({ _id: review._id, rating: review.rating, comment: review.comment })} className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 font-bold">✏️ Edit</button><button onClick={() => deleteReview(review._id)} className="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold">🗑️ Delete</button></div>
+                  </article>)}</div>}
+              </section>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {reviewEdit && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setReviewEdit(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center"><h2 className="text-xl font-black">Edit Review</h2><button onClick={() => setReviewEdit(null)} className="w-9 h-9 rounded-full bg-gray-100">✕</button></div>
+            <label className="block mt-5"><span className="text-sm font-bold text-gray-600">Rating</span><select value={reviewEdit.rating} onChange={e => setReviewEdit({...reviewEdit, rating: Number(e.target.value)})} className="mt-1 w-full border rounded-xl px-4 py-3"><option value="5">5 ⭐</option><option value="4">4 ⭐</option><option value="3">3 ⭐</option><option value="2">2 ⭐</option><option value="1">1 ⭐</option></select></label>
+            <label className="block mt-4"><span className="text-sm font-bold text-gray-600">Comment</span><textarea rows="5" maxLength="500" value={reviewEdit.comment} onChange={e => setReviewEdit({...reviewEdit, comment: e.target.value})} className="mt-1 w-full border rounded-xl px-4 py-3 resize-none" /></label>
+            <button disabled={reviewSaving} onClick={saveReview} className="w-full mt-5 py-3 rounded-xl bg-[#1769e0] text-white font-black disabled:opacity-50">{reviewSaving ? 'Saving...' : 'Save Review'}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 // =====================================================================
 // Main App Component - now just orchestrates state + passes props down.
 // No more nested component definitions => no more remount loop.
@@ -1656,6 +1888,9 @@ const App = () => {
   const [userLocationName, setUserLocationName] = useState('');
   const [userCoords, setUserCoords] = useState(null);
   const [locationStatus, setLocationStatus] = useState('idle');
+  const [account, setAccount] = useState(null);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountError, setAccountError] = useState('');
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const [showAuth, setShowAuth] = useState(false);
@@ -1744,6 +1979,22 @@ const App = () => {
     }
   };
 
+  const fetchCustomerAccount = async () => {
+    if (!currentUser || currentUser.role !== 'customer') return;
+    try {
+      setAccountLoading(true);
+      setAccountError('');
+      const response = await api.get('/account');
+      const payload = response?.data || response || {};
+      setAccount(payload.data || payload);
+    } catch (error) {
+      console.error('Error fetching customer account:', error);
+      setAccountError(error.response?.data?.message || 'Unable to load your account');
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
   const fetchAllOrders = async () => {
     try {
       const response = await ordersAPI.getAll();
@@ -1781,6 +2032,7 @@ const App = () => {
       } else {
         setView('home');
         fetchMyOrders();
+        fetchCustomerAccount();
       }
       alert(mode === 'login' ? 'Login successful!' : 'Registration successful!');
     } catch (error) {
@@ -1796,6 +2048,8 @@ const App = () => {
     setCart([]);
     setOrders([]);
     setAllOrders([]);
+    setAccount(null);
+    setAccountError('');
     setView('home');
   };
 
@@ -1967,6 +2221,7 @@ const App = () => {
         setAuthMode={setAuthMode}
         fetchMyOrders={fetchMyOrders}
         onOpenLocationPicker={() => setShowLocationPicker(true)}
+        onOpenAccount={() => { setView('account'); fetchCustomerAccount(); setShowMobileMenu(false); }}
       />
 
       <AuthModal
@@ -1993,6 +2248,17 @@ const App = () => {
           setAuthMode={setAuthMode}
           setView={setView}
           setSelectedCategory={setSelectedCategory}
+        />
+      )}
+
+      {view === 'account' && currentUser?.role === 'customer' && (
+        <CustomerAccountView
+          account={account}
+          loading={accountLoading}
+          error={accountError}
+          onRefresh={fetchCustomerAccount}
+          onBack={() => setView('home')}
+          onProfileUpdated={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
         />
       )}
 
