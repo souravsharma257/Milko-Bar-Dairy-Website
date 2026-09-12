@@ -75,6 +75,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
+const accountRoutes = require('./routes/account');
 
 // =========================
 // API ROUTES
@@ -85,6 +86,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/delivery', deliveryRoutes);
+app.use('/api/account', accountRoutes);
 
 // =========================
 // ROOT ROUTE
