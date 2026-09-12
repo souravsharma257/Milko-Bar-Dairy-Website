@@ -2,6 +2,7 @@ const DeliveryBoy = require('../models/DeliveryBoy');
 const Order = require('../models/Order');
 const jwt = require('jsonwebtoken');
 const { sendOrderDeliveredEmail } = require('../utils/emailService');
+const { sendOrderDeliveredWhatsApp } = require('../utils/whatsappService');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -307,9 +308,12 @@ const updateDeliveryStatus = async (req, res) => {
 
     const updated = await order.save();
 
-    // Send delivered email (fire-and-forget - never blocks or fails the request)
+    // Send delivered email + WhatsApp (fire-and-forget - never blocks or fails the request)
     if (status === 'Delivered' && order.user?.email) {
       sendOrderDeliveredEmail(order.user.email, updated);
+    }
+    if (status === 'Delivered' && updated.userPhone) {
+      sendOrderDeliveredWhatsApp(updated.userPhone, updated);
     }
 
     res.json({ success: true, data: updated });

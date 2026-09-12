@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { sendOrderPlacedEmail, sendOrderDeliveredEmail } = require('../utils/emailService');
+const { sendOrderPlacedWhatsApp, sendOrderDeliveredWhatsApp } = require('../utils/whatsappService');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -82,9 +83,12 @@ const createOrder = async (req, res) => {
     // TEMP DEBUG - remove once email is confirmed working
     console.log('🔍 DEBUG req.user:', req.user ? { id: req.user._id, email: req.user.email } : 'req.user is undefined/null');
 
-    // Send confirmation email (fire-and-forget - never blocks or fails the order)
+    // Send confirmation email + WhatsApp (fire-and-forget - never blocks or fails the order)
     if (req.user?.email) {
       sendOrderPlacedEmail(req.user.email, order);
+    }
+    if (userPhone) {
+      sendOrderPlacedWhatsApp(userPhone, order);
     }
 
     res.status(201).json({
@@ -189,9 +193,12 @@ const updateOrderStatus = async (req, res) => {
 
       const updatedOrder = await order.save();
 
-      // Send delivered email (fire-and-forget)
+      // Send delivered email + WhatsApp (fire-and-forget)
       if (status === 'Delivered' && order.user?.email) {
         sendOrderDeliveredEmail(order.user.email, updatedOrder);
+      }
+      if (status === 'Delivered' && updatedOrder.userPhone) {
+        sendOrderDeliveredWhatsApp(updatedOrder.userPhone, updatedOrder);
       }
 
       res.json({
