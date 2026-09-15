@@ -75,7 +75,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
-const accountRoutes = require('./routes/account');
+const accountRoutes = require('./routes/accountRoutes');
 
 // =========================
 // API ROUTES
