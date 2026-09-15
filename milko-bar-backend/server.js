@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const morgan = require('morgan');
 const connectDB = require('./config/db');
 
 
@@ -54,6 +55,11 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+// =========================
+// REQUEST LOGGING (dev)
+// =========================
+app.use(morgan('dev'));
 
 // =========================
 // MIDDLEWARE
